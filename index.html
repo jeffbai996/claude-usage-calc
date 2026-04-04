@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Max Usage Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg-secondary: #f5f5f3;
+    --bg-success: #eaf3de; --bg-warning: #faeeda; --bg-danger: #fcebeb;
+    --text-primary: #1a1a18; --text-secondary: #6b6b67;
+    --border: rgba(0,0,0,0.10);
+    --text-success: #3b6d11; --text-warning: #854f0b; --text-danger: #a32d2d;
+    --radius-md: 8px; --radius-lg: 12px; --blue: #378ADD;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg-secondary: #2a2a28;
+      --bg-success: #173404; --bg-warning: #412402; --bg-danger: #501313;
+      --text-primary: #f0ede8; --text-secondary: #a0a09a;
+      --border: rgba(255,255,255,0.10);
+      --text-success: #c0dd97; --text-warning: #fac775; --text-danger: #f7c1c1;
+    }
+  }
+  body { font-family: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg-secondary); color: var(--text-primary); min-height: 100vh; padding: 1.5rem; }
+  .container { max-width: 680px; margin: 0 auto; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; transition: background .2s; }
+  .card.t-success { background: var(--bg-success); }
+  .card.t-warning { background: var(--bg-warning); }
+  .card.t-danger  { background: var(--bg-danger); }
+  .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
+  .metric-val { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
+  .metric-val.c-success { color: var(--text-success); }
+  .metric-val.c-warning { color: var(--text-warning); }
+  .metric-val.c-danger  { color: var(--text-danger); }
+  .metric-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  .g2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .g3 { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .bar-bg { background: var(--bg-secondary); border-radius: 4px; height: 5px; overflow: hidden; }
+  .bar-fill { height: 5px; border-radius: 4px; transition: width .3s ease; }
+  .row-ctrl { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .row-ctrl label { font-size: 12px; color: var(--text-secondary); min-width: 88px; }
+  .row-ctrl input[type=range] { flex: 1; accent-color: var(--blue); }
+  .row-ctrl input[type=range]:disabled { opacity: .35; }
+  .row-ctrl .val { font-size: 13px; font-weight: 500; min-width: 42px; text-align: right; color: var(--text-primary); }
+  .day-marks { display: flex; justify-content: space-between; padding-left: 98px; padding-right: 54px; margin-top: 1px; margin-bottom: 10px; }
+  .day-mark { font-size: 10px; color: var(--text-secondary); text-align: center; flex: 1; }
+  .day-mark.active { color: var(--text-primary); font-weight: 600; }
+  .status-pill { font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; transition: background .2s, color .2s; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .section-head { font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .hdr-title { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+  .disclaimer { font-size: 10px; color: var(--text-secondary); font-style: italic; margin-top: 8px; line-height: 1.6; }
+  h1 { font-size: 17px; font-weight: 500; color: var(--text-primary); }
+  .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+  .reset-badge { font-size: 11px; color: var(--text-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+  .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
+  .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .auto-lbl { font-size: 11px; color: var(--text-secondary); }
+  .toggle-btn { font-family: "Google Sans", "Anthropic Sans", -apple-system, sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0; width: 48px; font-weight: 600; letter-spacing: .04em; padding: 3px 9px; border-radius: 5px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); transition: background .15s, color .15s, border-color .15s; min-width: 42px; text-align: center; }
+  .toggle-btn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
+  .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="title-row">
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.3</span></h1>
+  <span class="reset-badge" id="reset-badge">resets in —</span>
+</div>
+
+<div class="controls-card">
+  <div class="row-ctrl">
+    <label>usage so far</label>
+    <input type="range" min="0" max="100" value="13" step="1" id="used">
+    <span class="val" id="used-out">13%</span>
+  </div>
+  <div class="row-ctrl" style="margin-bottom:3px">
+    <label>hours elapsed</label>
+    <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
+    <span class="val" id="hours-out">23.0h</span>
+  </div>
+  <div class="day-marks">
+    <span class="day-mark">Th</span><span class="day-mark">F</span><span class="day-mark">S</span>
+    <span class="day-mark">Su</span><span class="day-mark">M</span><span class="day-mark">Tu</span>
+    <span class="day-mark">W</span><span class="day-mark">Th</span>
+  </div>
+  <div class="auto-row">
+    <span class="auto-lbl">time sync</span>
+    <button class="toggle-btn" id="auto-btn" onclick="toggleAuto()">MAN</button>
+    <span class="auto-lbl" id="auto-hint"></span>
+  </div>
+</div>
+
+<div id="status-pill" class="status-pill">
+  <div class="dot" id="status-dot"></div>
+  <span id="status-text"></span>
+</div>
+
+<div class="g3" style="margin-bottom:8px">
+  <div class="card">
+    <div class="metric-label">time elapsed</div>
+    <div class="metric-val" id="m-time">—</div>
+    <div class="metric-sub" id="m-time-sub">—</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">usage</div>
+    <div class="metric-val" id="m-used">—</div>
+    <div class="metric-sub" id="m-used-sub">—</div>
+  </div>
+  <div class="card" id="proj-card">
+    <div class="metric-label">quota used</div>
+    <div class="metric-val" id="m-proj">—</div>
+    <div class="metric-sub" id="m-proj-sub">linear extrapolation</div>
+  </div>
+</div>
+
+<div class="section-head">pace</div>
+<div class="card" style="margin-bottom:8px">
+  <div class="hdr"><span class="hdr-title">weekly limit</span><span id="p-used-pct" style="font-size:11px;color:var(--text-secondary)">—</span></div>
+  <div class="bar-bg"><div class="bar-fill" id="bar-used" style="background:var(--blue)"></div></div>
+  <div class="hdr" style="margin-top:9px"><span class="hdr-title">time elapsed</span><span id="p-time-pct" style="font-size:11px;color:var(--text-secondary)">—</span></div>
+  <div class="bar-bg"><div class="bar-fill" id="bar-time" style="background:rgba(180,180,180,.45)"></div></div>
+  <div class="delta-line" id="delta-line"></div>
+</div>
+
+<div class="g3" style="margin-bottom:8px">
+  <div class="card" id="card-surplus">
+    <div class="metric-label" id="surplus-label">surplus</div>
+    <div class="metric-val" id="surplus">—</div>
+    <div class="metric-sub" id="surplus-sub">vs. linear</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">daily budget</div>
+    <div class="metric-val" id="daily-budget">—</div>
+    <div class="metric-sub" id="daily-budget-sub">per remaining day</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">hours left</div>
+    <div class="metric-val" id="hrs-to-limit">—</div>
+    <div class="metric-sub" id="hrs-to-limit-sub">at current burn</div>
+  </div>
+</div>
+
+<div class="tok-section-head" style="justify-content:flex-start;gap:8px">
+  <span>estimated tokens</span>
+  <button class="toggle-btn" id="plan-btn" onclick="togglePlan()">20x</button>
+</div>
+
+<div class="g2" style="margin-bottom:8px">
+  <div class="card">
+    <div class="metric-label">used</div>
+    <div class="metric-val" id="tok-used">—</div>
+    <div class="metric-sub" id="tok-used-sub">of ~250M total</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">remaining</div>
+    <div class="metric-val" id="tok-left">—</div>
+    <div class="metric-sub" id="tok-burn-sub">—</div>
+  </div>
+</div>
+<div class="g2">
+  <div class="card" id="card-burn">
+    <div class="metric-label">burn rate</div>
+    <div class="metric-val" id="burn-rate">—</div>
+    <div class="metric-sub">MTok / hr</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">daily equivalent</div>
+    <div class="metric-val" id="daily-tok">—</div>
+    <div class="metric-sub">MTok / day</div>
+  </div>
+</div>
+<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only.</p>
+
+</div>
+
+<script>
+const CYCLE = 168;
+const PLAN_TOKENS = { '20x': 250, '5x': 62.5 };
+let planMode = '20x';
+let autoMode = false, autoTick = null;
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function getAutoHours() {
+  const now = new Date(), d = new Date(now);
+  const dback = (d.getDay() - 4 + 7) % 7;
+  d.setDate(d.getDate() - dback);
+  d.setHours(22, 0, 0, 0);
+  if (d > now) d.setDate(d.getDate() - 7);
+  return Math.min(CYCLE, Math.max(0, (now - d) / 3600000));
+}
+
+function getResetHrs() {
+  const now = new Date(), d = new Date(now);
+  let dahead = (4 - d.getDay() + 7) % 7;
+  if (dahead === 0 && now.getHours() >= 22) dahead = 7;
+  d.setDate(d.getDate() + dahead);
+  d.setHours(22, 0, 0, 0);
+  return Math.max(0, (d - now) / 3600000);
+}
+
+function fmtHrs(h) {
+  const d = Math.floor(h / 24), hh = Math.floor(h % 24);
+  return d > 0 ? d + 'd ' + hh + 'h' : hh + 'h';
+}
+
+function fmtClockHint() {
+  const now = new Date();
+  return 'using system clock: ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' ' + DAYS[now.getDay()];
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('cmuc_used', document.getElementById('used').value);
+    localStorage.setItem('cmuc_hrs',  document.getElementById('hours').value);
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const u = localStorage.getItem('cmuc_used');
+    const h = localStorage.getItem('cmuc_hrs');
+    if (u !== null) document.getElementById('used').value = u;
+    if (h !== null) document.getElementById('hours').value = h;
+  } catch(e) {}
+}
+
+function applyPlanBtn() {
+  const btn = document.getElementById('plan-btn');
+  btn.textContent = planMode;
+  if (planMode === '20x') {
+    btn.style.background = '#E8830A'; btn.style.borderColor = '#E8830A'; btn.style.color = '#fff';
+  } else {
+    btn.style.background = 'var(--text-success)'; btn.style.borderColor = 'var(--text-success)'; btn.style.color = 'var(--bg)';
+  }
+}
+
+function togglePlan() {
+  planMode = planMode === '20x' ? '5x' : '20x';
+  applyPlanBtn();
+  update();
+}
+
+function toggleAuto() {
+  autoMode = !autoMode;
+  const btn = document.getElementById('auto-btn');
+  const sl = document.getElementById('hours');
+  btn.classList.toggle('on', autoMode);
+  btn.textContent = autoMode ? 'AUTO' : 'MAN';
+  sl.disabled = autoMode;
+  if (autoMode) {
+    document.getElementById('auto-hint').textContent = fmtClockHint();
+    animateSlider(getAutoHours());
+    update();
+    autoTick = setInterval(function() {
+      animateSlider(getAutoHours());
+      document.getElementById('auto-hint').textContent = fmtClockHint();
+      update();
+    }, 30000);
+  } else {
+    clearInterval(autoTick);
+    document.getElementById('auto-hint').textContent = '';
+  }
+}
+
+function cls(v, lo, hi) { return v <= lo ? 'success' : v <= hi ? 'warning' : 'danger'; }
+function tint(v, lo, hi) { return 't-' + cls(v, lo, hi); }
+function colorCls(v, lo, hi) { return 'c-' + cls(v, lo, hi); }
+
+function setCard(id, tCls, valId, cCls) {
+  document.getElementById(id).className = 'card ' + tCls;
+  document.getElementById(valId).className = 'metric-val ' + cCls;
+}
+
+const _rs = {};
+function rollingSet(id, newText) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === newText) return;
+  if (_rs[id]) cancelAnimationFrame(_rs[id]);
+  const numNew = parseFloat(newText), numOld = parseFloat(el.textContent);
+  if (!isNaN(numNew) && !isNaN(numOld) && el.textContent !== '—' && newText !== '—') {
+    const decimals = (newText.split('.')[1] || '').length;
+    const suffix = newText.replace(/^[\d.+-]+/, '');
+    const start = performance.now(), from = numOld, to = numNew;
+    function step(ts) {
+      const t = Math.min((ts - start) / 350, 1);
+      const e = 1 - Math.pow(1 - t, 3);
+      el.textContent = (from + (to - from) * e).toFixed(decimals) + suffix;
+      if (t < 1) { _rs[id] = requestAnimationFrame(step); }
+      else { el.textContent = newText; delete _rs[id]; }
+    }
+    _rs[id] = requestAnimationFrame(step);
+  } else {
+    el.textContent = newText;
+  }
+}
+
+let _sliderAnim = null;
+function animateSlider(target) {
+  const sl = document.getElementById('hours');
+  const from = +sl.value, to = Math.min(CYCLE, Math.max(0, target));
+  if (Math.abs(to - from) < 0.01) return;
+  if (_sliderAnim) cancelAnimationFrame(_sliderAnim);
+  const start = performance.now(), dur = 900;
+  function step(ts) {
+    const t = Math.min((ts - start) / dur, 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    const val = from + (to - from) * e;
+    sl.value = val.toFixed(3);
+    document.getElementById('hours-out').textContent = val.toFixed(1) + 'h';
+    if (t < 1) { _sliderAnim = requestAnimationFrame(step); }
+    else { sl.value = to; document.getElementById('hours-out').textContent = to.toFixed(1) + 'h'; _sliderAnim = null; update(); }
+  }
+  _sliderAnim = requestAnimationFrame(step);
+}
+
+function update() {
+  const TOK = PLAN_TOKENS[planMode];
+  const used = +document.getElementById('used').value;
+  const hrs  = +document.getElementById('hours').value;
+
+  document.getElementById('used-out').textContent  = used + '%';
+  document.getElementById('hours-out').textContent = hrs.toFixed(1) + 'h';
+
+  const pctTime = hrs / CYCLE * 100;
+  const remaining = CYCLE - hrs;
+  const proj = hrs > 0 ? (used / hrs * CYCLE) : 0;
+  const surplus = pctTime - used;
+  const remainDays = remaining / 24;
+
+  document.getElementById('reset-badge').textContent = 'resets in ' + fmtHrs(getResetHrs());
+
+  rollingSet('m-time', pctTime.toFixed(2) + '%');
+  const remD = Math.floor(remaining / 24), remH = Math.floor(remaining % 24);
+  document.getElementById('m-time-sub').textContent = remD > 0 ? remD + 'd ' + remH + 'h remaining' : remaining.toFixed(1) + 'h remaining';
+  document.getElementById('m-used').textContent = used + '%';
+  document.getElementById('m-used-sub').textContent = (100 - used) + '% left';
+  rollingSet('m-proj', hrs > 0 ? proj.toFixed(2) + '%' : '—');
+  document.getElementById('tok-used-sub').textContent = 'of ~' + TOK + ' MTok total';
+
+  let projLabel, statusText, bgColor, textColor, dotColor;
+  if (proj <= 90)       { projLabel = 'comfortably under';  statusText = 'on track — running under pace';         bgColor = 'var(--bg-success)'; textColor = 'var(--text-success)'; dotColor = '#1D9E75'; }
+  else if (proj <= 100) { projLabel = 'cutting it close';   statusText = 'marginal — watch for heavy sessions';   bgColor = 'var(--bg-warning)'; textColor = 'var(--text-warning)'; dotColor = '#BA7517'; }
+  else                  { projLabel = 'robbed by API';       statusText = 'over pace — projected to exceed limit'; bgColor = 'var(--bg-danger)';  textColor = 'var(--text-danger)';  dotColor = '#E24B4A'; }
+
+  document.getElementById('m-proj-sub').textContent = hrs > 0 ? projLabel : 'no data yet';
+  const pCls = hrs > 0 ? cls(proj, 90, 100) : '';
+  document.getElementById('proj-card').className = 'card' + (pCls ? ' t-' + pCls : '');
+  document.getElementById('m-proj').className    = 'metric-val' + (pCls ? ' c-' + pCls : '');
+
+  const sp = document.getElementById('status-pill');
+  sp.style.background = bgColor; sp.style.color = textColor;
+  document.getElementById('status-text').textContent = statusText;
+  document.getElementById('status-dot').style.background = dotColor;
+
+  document.getElementById('bar-used').style.width = Math.min(used, 100) + '%';
+  document.getElementById('bar-time').style.width = Math.min(pctTime, 100).toFixed(1) + '%';
+  document.getElementById('p-used-pct').textContent = used + '%';
+  document.getElementById('p-time-pct').textContent = pctTime.toFixed(1) + '%';
+
+  if (hrs > 0) {
+    const over = used > pctTime, dAbs = Math.abs(pctTime - used).toFixed(1);
+    document.getElementById('delta-line').innerHTML =
+      '<span style="color:' + (over ? 'var(--text-danger)' : 'var(--text-success)') + '">' +
+      (over ? '▲' : '▼') + '</span> ' + dAbs + '% ' + (over ? 'over' : 'under') + ' quota';
+  } else {
+    document.getElementById('delta-line').textContent = '';
+  }
+
+  if (hrs > 0) {
+    document.getElementById('surplus-label').textContent = surplus >= 0 ? 'surplus' : 'deficit';
+    document.getElementById('surplus').textContent = (surplus >= 0 ? '+' : '') + surplus.toFixed(1) + '%';
+    document.getElementById('surplus-sub').textContent = surplus >= 0 ? 'budget to spare' : 'burned ahead of pace';
+    const st = surplus >= 0 ? 'success' : surplus > -5 ? 'warning' : 'danger';
+    document.getElementById('card-surplus').className = 'card t-' + st;
+    document.getElementById('surplus').className = 'metric-val c-' + st;
+  } else {
+    document.getElementById('surplus').textContent = '—';
+    document.getElementById('card-surplus').className = 'card';
+    document.getElementById('surplus').className = 'metric-val';
+  }
+
+  document.getElementById('daily-budget').textContent = remainDays > 0.1 ? ((100 - used) / remainDays).toFixed(1) + '%' : '—';
+  document.getElementById('daily-budget-sub').textContent = remainDays > 0.1 ? 'per remaining day' : 'cycle almost over';
+
+  const tokUsed = TOK * used / 100;
+  const tokLeft = TOK - tokUsed;
+  const burnPerHr = hrs > 0 ? tokUsed / hrs : 0;
+  const burnPerDay = burnPerHr * 24;
+
+  if (burnPerHr > 0) {
+    const hrsToLim = (100 - used) / (used / hrs);
+    document.getElementById('hrs-to-limit').textContent = fmtHrs(hrsToLim);
+    document.getElementById('hrs-to-limit-sub').textContent = hrsToLim < remaining ? 'hits limit before reset' : 'beyond reset — fine';
+    document.getElementById('hrs-to-limit').className = 'metric-val ' + (hrsToLim < remaining ? 'c-danger' : 'c-success');
+  } else {
+    document.getElementById('hrs-to-limit').textContent = '—';
+    document.getElementById('hrs-to-limit').className = 'metric-val';
+    document.getElementById('hrs-to-limit-sub').textContent = 'at current burn';
+  }
+
+  rollingSet('tok-used', tokUsed.toFixed(1) + 'M');
+  rollingSet('tok-left', tokLeft.toFixed(1) + 'M');
+  document.getElementById('tok-burn-sub').textContent = burnPerHr > 0 ? 'burning ' + burnPerHr.toFixed(2) + ' MTok/hr' : '—';
+
+  const sustain = TOK / CYCLE;
+  if (hrs > 0) {
+    rollingSet('burn-rate', burnPerHr.toFixed(2));
+    setCard('card-burn', tint(burnPerHr, sustain, sustain * 1.2), 'burn-rate', colorCls(burnPerHr, sustain, sustain * 1.2));
+  } else {
+    document.getElementById('burn-rate').textContent = '—';
+    setCard('card-burn', '', 'burn-rate', '');
+  }
+  rollingSet('daily-tok', hrs > 0 ? burnPerDay.toFixed(1) : '—');
+
+  const marks = document.querySelectorAll('.day-mark');
+  const activeDayIdx = Math.min(Math.floor(hrs / 24), 7);
+  marks.forEach(function(m, i) { m.classList.toggle('active', i === activeDayIdx); });
+}
+
+document.getElementById('used').addEventListener('input', function() { saveState(); update(); });
+document.getElementById('hours').addEventListener('input', function() { saveState(); update(); });
+
+setInterval(function() {
+  if (autoMode) {
+    const sl = document.getElementById('hours');
+    sl.value = getAutoHours().toFixed(3);
+  }
+  saveState();
+  update();
+}, 15000);
+
+loadState();
+update();
+applyPlanBtn();
+</script>
+</body>
+</html>
