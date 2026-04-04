@@ -60,7 +60,25 @@
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
   .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
-  .toggle-btn { font-family: "Google Sans", "Anthropic Sans", -apple-system, sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0; width: 48px; font-weight: 600; letter-spacing: .04em; padding: 3px 9px; border-radius: 5px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); transition: background .15s, color .15s, border-color .15s; min-width: 42px; text-align: center; }
+  .toggle-btn {
+    font-family: "Google Sans", "Anthropic Sans", -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    padding: 4px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    transition: background .15s, color .15s, border-color .15s;
+    min-width: 48px;
+    text-align: center;
+  }
   .toggle-btn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
   .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
   .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
@@ -290,7 +308,7 @@ function rollingSet(id, newText) {
     function step(ts) {
       const t = Math.min((ts - start) / 350, 1);
       const e = 1 - Math.pow(1 - t, 3);
-      el.textContent = (from + (to - from) * e).toFixed(decimals) + suffix;
+      el.textContent = (from + (to - from) * e).toFixed(Math.min(decimals, 2)) + suffix;
       if (t < 1) { _rs[id] = requestAnimationFrame(step); }
       else { el.textContent = newText; delete _rs[id]; }
     }
