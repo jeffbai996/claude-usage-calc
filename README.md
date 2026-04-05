@@ -24,7 +24,7 @@ It syncs to your system clock automatically, so the "hours elapsed since reset" 
 
 ## Live demo
 
-**[jeffbai996.github.io/claude-max-usage-calculator](https://jeffbai996.github.io/claude-max-usage-calculator/)**
+**[jeffbai996.github.io/claude-max-usage-calculator](https://jeffbai996.github.io/claude-usage-calc/)**
 
 Or clone and open `index.html` locally — no server needed.
 
