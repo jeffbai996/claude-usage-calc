@@ -2,7 +2,7 @@
 
 **Track your weekly Claude Max token budget in real time — no install, no build step, no account required.**
 
-![Version](https://img.shields.io/badge/version-v0.3-blue)
+![Version](https://img.shields.io/badge/version-v0.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Zero deps](https://img.shields.io/badge/dependencies-none-lightgrey)
 
