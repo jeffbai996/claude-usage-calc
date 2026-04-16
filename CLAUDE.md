@@ -11,15 +11,16 @@ Deploy by dropping `index.html` anywhere — GitHub Pages, Netlify, local open.
 - No bundler, no npm, no config files needed
 
 ## Key constants
-- `CYCLE = 168` — weekly cycle in hours (Thu 10pm PT reset)
+- `CYCLE = 168` — weekly cycle in hours (Thu 12pm PT reset)
 - `PLAN_TOKENS = { '20x': 250, '5x': 62.5 }` — MTok estimates (community-derived)
-- Reset time: hardcoded Thu 10pm PT — does not account for DST edge cases
+- Reset time: hardcoded Thu 12pm PT — does not account for DST edge cases
+- **TODO**: make reset time user-configurable via settings UI (currently hardcoded in `getCycleStartDate()`)
 
 ## Core functions
 | Function | Purpose |
 |---|---|
-| `getAutoHours()` | Hours elapsed since last Thu 10pm from system clock |
-| `getResetHrs()` | Hours until next Thu 10pm reset |
+| `getAutoHours()` | Hours elapsed since last Thu 12pm PT from system clock |
+| `getResetHrs()` | Hours until next Thu 12pm PT reset |
 | `update()` | Master render — reads sliders, recomputes all metrics, updates DOM |
 | `rollingSet(id, val)` | Animated number transition via rAF, cubic-out 350ms |
 | `animateSlider(target)` | Smooth slider thumb animation, cubic-out 900ms |

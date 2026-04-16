@@ -223,14 +223,15 @@ let autoMode = false, autoTick = null;
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 function getCycleStartDate() {
-  // Thu 22:00 PT in UTC. PT = UTC-7 (PDT, Mar-Nov) or UTC-8 (PST)
+  // TODO: make reset time user-configurable in settings UI
+  // Hardcoded: Thu 12:00 PT. PT = UTC-7 (PDT, Mar-Nov) or UTC-8 (PST)
   const now = new Date();
   const ptOffset = (now.getUTCMonth() >= 2 && now.getUTCMonth() <= 10) ? 7 : 8;
-  // Thu 22:00 PT = Fri (ptOffset-2):00 UTC (e.g. Fri 05:00 UTC in PDT)
-  const resetHourUTC = 22 + ptOffset - 24;
-  // Start at today in UTC at that hour, find most recent Friday
+  // Thu 12:00 PT = Thu (12 + ptOffset):00 UTC (e.g. Thu 19:00 UTC in PDT)
+  const resetHourUTC = 12 + ptOffset;
+  // Start at today in UTC at that hour, find most recent Thursday
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), resetHourUTC, 0, 0, 0));
-  const dback = (d.getUTCDay() - 5 + 7) % 7;
+  const dback = (d.getUTCDay() - 4 + 7) % 7;
   d.setUTCDate(d.getUTCDate() - dback);
   if (d > now) d.setUTCDate(d.getUTCDate() - 7);
   return d;
@@ -239,6 +240,7 @@ function getCycleStartDate() {
 function getDayMarkIdx(hrs) {
   // Map hours-into-cycle → local calendar day → mark index
   // Marks: Th(0) F(1) S(2) Su(3) M(4) Tu(5) W(6) Th(7)
+  // Cycle starts Thu 12:00 PT, so Thu is idx 0 and idx 7
   const t = new Date(getCycleStartDate().getTime() + hrs * 3600000);
   const day = t.getDay(); // uses user's local timezone automatically
   // getDay(): 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
