@@ -14,6 +14,7 @@
     --border: rgba(0,0,0,0.10);
     --text-success: #3b6d11; --text-warning: #854f0b; --text-danger: #a32d2d;
     --radius-md: 8px; --radius-lg: 12px; --blue: #378ADD;
+    --scrim: rgba(0,0,0,0.35);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -22,6 +23,7 @@
       --text-primary: #f0ede8; --text-secondary: #a0a09a;
       --border: rgba(255,255,255,0.10);
       --text-success: #c0dd97; --text-warning: #fac775; --text-danger: #f7c1c1;
+      --scrim: rgba(0,0,0,0.55);
     }
   }
   body { font-family: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg-secondary); color: var(--text-primary); min-height: 100vh; padding: 1.5rem; }
@@ -56,7 +58,18 @@
   .disclaimer { font-size: 10px; color: var(--text-secondary); font-style: italic; margin-top: 8px; line-height: 1.6; }
   h1 { font-size: 17px; font-weight: 500; color: var(--text-primary); }
   .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+  .title-row .right { display: flex; align-items: center; gap: 6px; }
   .reset-badge { font-size: 11px; color: var(--text-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+  .icon-btn {
+    background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px;
+    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-secondary); padding: 0;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .icon-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .copy-fb { font-size: 11px; color: var(--text-success); margin-right: 2px; opacity: 0; transition: opacity .2s; }
+  .copy-fb.on { opacity: 1; }
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
   .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
@@ -81,6 +94,8 @@
   }
   .toggle-btn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
   .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
+  .delta-arrow.up { color: var(--text-danger); }
+  .delta-arrow.down { color: var(--text-success); }
   .stepper-wrap { display: flex; align-items: center; gap: 5px; }
   .stepper-btn {
     display: inline-flex; align-items: center; justify-content: center;
@@ -93,14 +108,98 @@
   .stepper-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
   .stepper-btn:active { transform: scale(0.9); }
   .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+
+  /* Sparkline inside pace card */
+  .sparkline-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
+  .sparkline-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .sparkline-hdr .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+  .sparkline-hdr .sub { font-size: 10px; color: var(--text-secondary); font-style: italic; }
+  .sparkline-svg { display: block; width: 100%; height: 48px; }
+  .sparkline-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 14px 0; }
+
+  /* Burn split card */
+  .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+  .burn-split .col { flex: 1; }
+  .burn-split .col.second { border-left: 0.5px solid var(--border); padding-left: 10px; }
+  .burn-split .bval { font-size: 18px; font-weight: 500; line-height: 1.1; transition: color .2s; }
+  .burn-split .bval.c-success { color: var(--text-success); }
+  .burn-split .bval.c-warning { color: var(--text-warning); }
+  .burn-split .bval.c-danger  { color: var(--text-danger); }
+  .burn-split .blbl { font-size: 10px; color: var(--text-secondary); letter-spacing: .05em; text-transform: uppercase; }
+  .burn-split .bsub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* Resume-in card */
+  .resume-card { margin-bottom: 8px; display: none; }
+  .resume-card.on { display: block; }
+
+  /* Settings drawer */
+  .scrim {
+    position: fixed; inset: 0; background: var(--scrim);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+    z-index: 49;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100%;
+    background: var(--bg); border-left: 0.5px solid var(--border);
+    transform: translateX(100%); transition: transform .25s cubic-bezier(.2,.9,.3,1);
+    z-index: 50; padding: 18px 20px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .drawer.on { transform: translateX(0); }
+  .drawer h2 { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; }
+  .drawer h2 button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; }
+  .drawer h2 button:hover { color: var(--text-primary); }
+  .drawer-section { border-top: 0.5px solid var(--border); padding-top: 12px; }
+  .drawer-section:first-of-type { border-top: none; padding-top: 0; }
+  .drawer-section h3 { font-size: 10px; color: var(--text-secondary); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 8px; }
+  .drawer-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .drawer-row label { font-size: 12px; color: var(--text-secondary); min-width: 70px; flex-shrink: 0; }
+  .drawer-row select, .drawer-row input[type="number"] {
+    flex: 1; padding: 5px 8px; font-size: 12px; color: var(--text-primary);
+    background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 5px;
+    font-family: inherit;
+  }
+  .drawer-row input[type="checkbox"] { accent-color: var(--blue); width: 16px; height: 16px; }
+  .drawer .hint { font-size: 10px; color: var(--text-secondary); font-style: italic; line-height: 1.5; margin-top: 2px; }
+  .drawer-btn {
+    padding: 7px 12px; font-size: 11px; font-weight: 500; border-radius: 6px;
+    border: 0.5px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);
+    cursor: pointer; transition: background .12s, color .12s;
+  }
+  .drawer-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .drawer-btn.danger:hover { background: var(--text-danger); border-color: var(--text-danger); }
+
+  /* Mobile touch tuning */
+  @media (pointer: coarse) {
+    input[type=range] { height: 32px; }
+    input[type=range]::-webkit-slider-thumb { width: 24px; height: 24px; }
+    .stepper-btn { width: 40px; height: 40px; font-size: 20px; }
+    .toggle-btn { min-height: 32px; padding: 6px 0; }
+    .icon-btn { width: 36px; height: 36px; }
+    .icon-btn svg { width: 16px; height: 16px; }
+  }
+  @media (max-width: 480px) {
+    .drawer { width: 100%; }
+    body { padding: 1rem; }
+  }
 </style>
 </head>
 <body>
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.6</span></h1>
-  <span class="reset-badge" id="reset-badge">resets in —</span>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.7</span></h1>
+  <div class="right">
+    <span class="copy-fb" id="copy-fb">copied</span>
+    <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+    <button class="icon-btn" id="settings-btn" title="Settings (S)" onclick="openSettings()" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span class="reset-badge" id="reset-badge">resets in —</span>
+  </div>
 </div>
 
 <div class="controls-card">
@@ -137,6 +236,12 @@
   <span id="status-text"></span>
 </div>
 
+<div class="card resume-card" id="resume-card">
+  <div class="metric-label">resume-in</div>
+  <div class="metric-val c-warning" id="resume-val">—</div>
+  <div class="metric-sub" id="resume-sub">pause this long to catch linear pace</div>
+</div>
+
 <div class="g3" style="margin-bottom:8px">
   <div class="card">
     <div class="metric-label">time elapsed</div>
@@ -162,6 +267,15 @@
   <div class="hdr" style="margin-top:9px"><span class="hdr-title">time elapsed</span><span id="p-time-pct" style="font-size:11px;color:var(--text-secondary)">—</span></div>
   <div class="bar-bg"><div class="bar-fill" id="bar-time" style="background:rgba(180,180,180,.45)"></div></div>
   <div class="delta-line" id="delta-line"></div>
+
+  <div class="sparkline-wrap">
+    <div class="sparkline-hdr">
+      <span class="lbl">history</span>
+      <span class="sub" id="spark-sub">actual vs linear pace</span>
+    </div>
+    <svg class="sparkline-svg" id="spark" viewBox="0 0 200 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="sparkline-empty" id="spark-empty" style="display:none">Move the usage slider to start tracking history.</div>
+  </div>
 </div>
 
 <div class="g3" style="margin-bottom:8px">
@@ -202,8 +316,18 @@
 <div class="g2">
   <div class="card" id="card-burn">
     <div class="metric-label">burn rate</div>
-    <div class="metric-val" id="burn-rate">—</div>
-    <div class="metric-sub">MTok / hr</div>
+    <div class="burn-split">
+      <div class="col">
+        <div class="bval" id="burn-avg">—</div>
+        <div class="blbl">avg</div>
+        <div class="bsub">since reset</div>
+      </div>
+      <div class="col second">
+        <div class="bval" id="burn-recent">—</div>
+        <div class="blbl">recent</div>
+        <div class="bsub" id="burn-recent-sub">last 2h</div>
+      </div>
+    </div>
   </div>
   <div class="card">
     <div class="metric-label">daily equivalent</div>
@@ -211,79 +335,403 @@
     <div class="metric-sub">MTok / day</div>
   </div>
 </div>
-<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only.</p>
+<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</p>
 
 </div>
 
+<!-- Settings drawer -->
+<div class="scrim" id="scrim" onclick="closeSettings()"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-labelledby="drawer-title">
+  <h2 id="drawer-title"><span>settings</span><button onclick="closeSettings()" aria-label="close">×</button></h2>
+
+  <div class="drawer-section">
+    <h3>reset cycle</h3>
+    <div class="drawer-row">
+      <label for="s-day">day</label>
+      <select id="s-day"></select>
+    </div>
+    <div class="drawer-row">
+      <label for="s-hour">hour</label>
+      <input type="number" id="s-hour" min="0" max="23" step="1">
+    </div>
+    <div class="drawer-row">
+      <label for="s-tz">timezone</label>
+      <select id="s-tz"></select>
+    </div>
+    <div class="hint" id="s-reset-hint">—</div>
+  </div>
+
+  <div class="drawer-section">
+    <h3>plan tokens (MTok / week)</h3>
+    <div class="drawer-row">
+      <label for="s-t20">20x</label>
+      <input type="number" id="s-t20" min="0" step="1">
+    </div>
+    <div class="drawer-row">
+      <label for="s-t5">5x</label>
+      <input type="number" id="s-t5" min="0" step="0.5">
+    </div>
+    <div class="hint">Community-estimated weekly totals. Override if Anthropic publishes or you've measured your own limit.</div>
+  </div>
+
+  <div class="drawer-section">
+    <h3>history</h3>
+    <div class="drawer-row">
+      <label for="s-hist">track</label>
+      <input type="checkbox" id="s-hist">
+      <span class="auto-lbl" id="s-hist-count">0 entries</span>
+    </div>
+    <div class="drawer-row">
+      <button class="drawer-btn danger" onclick="clearHistoryNow()">clear history</button>
+    </div>
+    <div class="hint">Usage snapshots are stored in localStorage and auto-clear each reset.</div>
+  </div>
+
+  <div class="drawer-section">
+    <button class="drawer-btn" onclick="resetSettings()">reset to defaults</button>
+  </div>
+
+  <div class="drawer-section" style="font-size:10px;color:var(--text-secondary);font-style:italic">
+    Shortcuts: ←/→ usage, A auto, P plan, S settings, C copy, Esc close.
+  </div>
+</aside>
+
 <script>
 const CYCLE = 168;
-const PLAN_TOKENS = { '20x': 250, '5x': 62.5 };
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const DEFAULT_SETTINGS = {
+  resetDay: 4,        // 0=Sun..6=Sat, 4=Thu
+  resetHour: 12,      // 0-23 in resetTz
+  resetTz: 'America/Los_Angeles',
+  tokens20x: 250,
+  tokens5x: 62.5,
+  historyEnabled: true,
+};
+let settings = Object.assign({}, DEFAULT_SETTINGS);
 let planMode = '20x';
 let autoMode = false, autoTick = null;
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-function getCycleStartDate() {
-  // TODO: make reset time user-configurable in settings UI
-  // Hardcoded: Thu 12:00 PT. PT = UTC-7 (PDT, Mar-Nov) or UTC-8 (PST)
-  const now = new Date();
-  const ptOffset = (now.getUTCMonth() >= 2 && now.getUTCMonth() <= 10) ? 7 : 8;
-  // Thu 12:00 PT = Thu (12 + ptOffset):00 UTC (e.g. Thu 19:00 UTC in PDT)
-  const resetHourUTC = 12 + ptOffset;
-  // Start at today in UTC at that hour, find most recent Thursday
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), resetHourUTC, 0, 0, 0));
-  const dback = (d.getUTCDay() - 4 + 7) % 7;
-  d.setUTCDate(d.getUTCDate() - dback);
-  if (d > now) d.setUTCDate(d.getUTCDate() - 7);
-  return d;
+// ---------- Settings ----------
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('cmuc_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      settings = Object.assign({}, DEFAULT_SETTINGS, parsed);
+    }
+  } catch(e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem('cmuc_settings', JSON.stringify(settings)); } catch(e) {}
+}
+function fillSelect(sel, values, labels) {
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  for (let i = 0; i < values.length; i++) {
+    const opt = document.createElement('option');
+    opt.value = values[i];
+    opt.textContent = labels ? labels[i] : values[i];
+    sel.appendChild(opt);
+  }
+}
+function populateDrawer() {
+  const daySel = document.getElementById('s-day');
+  fillSelect(daySel, [0,1,2,3,4,5,6], DAYS_LONG);
+  daySel.value = settings.resetDay;
+
+  const tzSel = document.getElementById('s-tz');
+  const zones = [
+    'America/Los_Angeles','America/Denver','America/Chicago','America/New_York',
+    'America/Toronto','America/Vancouver','UTC','Europe/London','Europe/Berlin',
+    'Europe/Paris','Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo',
+    'Asia/Shanghai','Asia/Hong_Kong','Australia/Sydney',
+  ];
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (localTz && zones.indexOf(localTz) === -1) zones.push(localTz);
+  fillSelect(tzSel, zones);
+  tzSel.value = settings.resetTz;
+
+  document.getElementById('s-hour').value = settings.resetHour;
+  document.getElementById('s-t20').value = settings.tokens20x;
+  document.getElementById('s-t5').value = settings.tokens5x;
+  document.getElementById('s-hist').checked = settings.historyEnabled;
+  updateHistCount();
+  updateResetHint();
+}
+function onSettingChange() {
+  const day = parseInt(document.getElementById('s-day').value, 10);
+  const hour = parseInt(document.getElementById('s-hour').value, 10);
+  const tz = document.getElementById('s-tz').value;
+  const t20 = parseFloat(document.getElementById('s-t20').value);
+  const t5 = parseFloat(document.getElementById('s-t5').value);
+  const hist = document.getElementById('s-hist').checked;
+  if (!isNaN(day)) settings.resetDay = Math.max(0, Math.min(6, day));
+  if (!isNaN(hour)) settings.resetHour = Math.max(0, Math.min(23, hour));
+  if (tz) settings.resetTz = tz;
+  if (!isNaN(t20) && t20 > 0) settings.tokens20x = t20;
+  if (!isNaN(t5) && t5 > 0) settings.tokens5x = t5;
+  settings.historyEnabled = !!hist;
+  saveSettings();
+  updateResetHint();
+  update();
+}
+function resetSettings() {
+  settings = Object.assign({}, DEFAULT_SETTINGS);
+  saveSettings();
+  populateDrawer();
+  update();
+}
+function openSettings() {
+  document.getElementById('scrim').classList.add('on');
+  document.getElementById('drawer').classList.add('on');
+  updateHistCount();
+}
+function closeSettings() {
+  document.getElementById('scrim').classList.remove('on');
+  document.getElementById('drawer').classList.remove('on');
+}
+function updateResetHint() {
+  const start = getCycleStartDate();
+  const next = new Date(start.getTime() + CYCLE * 3600000);
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: settings.resetTz, weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  });
+  document.getElementById('s-reset-hint').textContent = 'Next reset: ' + fmt.format(next) + ' (in ' + fmtHrs(getResetHrs()) + ')';
+}
+function updateHistCount() {
+  const h = loadHistory();
+  document.getElementById('s-hist-count').textContent = h.length + ' entries';
 }
 
-function getDayMarkIdx(hrs) {
-  // Map hours-into-cycle → local calendar day → mark index
-  // Marks: Th(0) F(1) S(2) Su(3) M(4) Tu(5) W(6) Th(7)
-  // Cycle starts Thu 12:00 PT, so Thu is idx 0 and idx 7
-  const t = new Date(getCycleStartDate().getTime() + hrs * 3600000);
-  const day = t.getDay(); // uses user's local timezone automatically
-  // getDay(): 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
-  const map = [3, 4, 5, 6, 0, 1, 2];
-  let idx = map[day];
-  // Two Thursdays in the cycle: first (hrs<84) = idx 0, second = idx 7
-  if (day === 4 && hrs > 84) idx = 7;
-  return idx;
+// ---------- Time math (TZ-aware) ----------
+// Given a UTC instant `date` and an IANA zone name `tz`, returns the zone's
+// offset in minutes at that instant. Positive = zone ahead of UTC.
+function tzOffsetMin(date, tz) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const get = function(t) { return parseInt(parts.find(function(p) { return p.type === t; }).value, 10); };
+  let hour = get('hour'); if (hour === 24) hour = 0;
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+  return (asUtc - date.getTime()) / 60000;
+}
+
+function getCycleStartDate() {
+  // Find most recent {resetDay, resetHour} in {resetTz} that is <= now.
+  const now = new Date();
+  const tz = settings.resetTz;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    weekday: 'short', hour12: false,
+  }).formatToParts(now);
+  const get = function(t) { return parts.find(function(p) { return p.type === t; }).value; };
+  const wkShort = get('weekday');
+  const wkIdx = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(wkShort);
+  const yy = parseInt(get('year'), 10), mm = parseInt(get('month'), 10), dd = parseInt(get('day'), 10);
+  let hh = parseInt(get('hour'), 10); if (hh === 24) hh = 0;
+  const mi = parseInt(get('minute'), 10);
+
+  let dback = (wkIdx - settings.resetDay + 7) % 7;
+  // If today IS reset day but we haven't yet hit reset hour, go back a full week.
+  if (dback === 0 && hh < settings.resetHour) dback = 7;
+
+  // Build UTC instant that represents (yy,mm,dd-dback) at resetHour:00 in target TZ.
+  const tentative = new Date(Date.UTC(yy, mm - 1, dd - dback, settings.resetHour, 0, 0, 0));
+  const offMin = tzOffsetMin(tentative, tz);
+  let startUtc = tentative.getTime() - offMin * 60000;
+  // DST / offset slippage guard: ensure we didn't overshoot now.
+  if (startUtc > now.getTime()) startUtc -= 7 * 24 * 3600000;
+  return new Date(startUtc);
 }
 
 function getAutoHours() {
   const now = new Date();
   return Math.min(CYCLE, Math.max(0, (now - getCycleStartDate()) / 3600000));
 }
-
 function getResetHrs() {
   const nextReset = new Date(getCycleStartDate().getTime() + CYCLE * 3600000);
   return Math.max(0, (nextReset - new Date()) / 3600000);
 }
-
 function fmtHrs(h) {
   const d = Math.floor(h / 24), hh = Math.floor(h % 24);
   return d > 0 ? d + 'd ' + hh + 'h' : hh + 'h';
 }
-
 function fmtClockHint() {
   const now = new Date();
-  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' ' + DAYS[now.getDay()];
+  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' ' + DAYS_SHORT[now.getDay()];
 }
 
+// ---------- History ----------
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem('cmuc_history');
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) { return []; }
+}
+function saveHistoryArr(arr) {
+  try { localStorage.setItem('cmuc_history', JSON.stringify(arr)); } catch(e) {}
+}
+function pruneHistory(arr) {
+  const cycleStart = getCycleStartDate().getTime();
+  let out = arr.filter(function(e) { return e.ts >= cycleStart; });
+  if (out.length > 500) out = out.slice(out.length - 500);
+  return out;
+}
+function logUsage(used, hrs) {
+  if (!settings.historyEnabled) return;
+  const arr = pruneHistory(loadHistory());
+  const now = Date.now();
+  const last = arr[arr.length - 1];
+  if (!last || last.used !== used || (now - last.ts) > 10 * 60 * 1000) {
+    arr.push({ ts: now, used: used, hrs: hrs });
+    saveHistoryArr(arr);
+  } else if (arr.length !== loadHistory().length) {
+    // Pruning removed cross-cycle entries; persist the pruned version.
+    saveHistoryArr(arr);
+  }
+}
+function clearHistoryNow() {
+  try { localStorage.removeItem('cmuc_history'); } catch(e) {}
+  updateHistCount();
+  renderSparkline();
+}
+function recentBurn(hoursBack, TOK) {
+  if (!settings.historyEnabled) return null;
+  const arr = pruneHistory(loadHistory());
+  if (arr.length < 2) return null;
+  const cutoff = Date.now() - hoursBack * 3600000;
+  let startIdx = 0;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].ts <= cutoff) { startIdx = i; break; }
+    if (i === 0) startIdx = 0;
+  }
+  const a = arr[startIdx], b = arr[arr.length - 1];
+  const dtHr = (b.ts - a.ts) / 3600000;
+  if (dtHr < 0.05) return null;
+  const dUsed = b.used - a.used;
+  return (TOK * dUsed / 100) / dtHr;
+}
+function setSparkEmpty(msg) {
+  const svg = document.getElementById('spark');
+  const empty = document.getElementById('spark-empty');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  empty.style.display = 'block';
+  empty.textContent = msg;
+}
+function makeSvgPath(d, stroke, dash) {
+  const p = document.createElementNS(SVG_NS, 'path');
+  p.setAttribute('d', d);
+  p.setAttribute('stroke', stroke);
+  p.setAttribute('stroke-width', dash ? '1' : '1.5');
+  p.setAttribute('fill', 'none');
+  p.setAttribute('stroke-linejoin', 'round');
+  p.setAttribute('stroke-linecap', 'round');
+  if (dash) p.setAttribute('stroke-dasharray', dash);
+  return p;
+}
+function renderSparkline() {
+  if (!settings.historyEnabled) { setSparkEmpty('History tracking disabled.'); return; }
+  const arr = pruneHistory(loadHistory());
+  if (arr.length < 2) { setSparkEmpty('Move the usage slider to start tracking history.'); return; }
+
+  const svg = document.getElementById('spark');
+  const empty = document.getElementById('spark-empty');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  empty.style.display = 'none';
+
+  const cycleStart = getCycleStartDate().getTime();
+  const cycleEndMs = cycleStart + CYCLE * 3600000;
+  const W = 200, H = 48, pad = 2;
+  const xScale = function(ts) {
+    const h = Math.max(0, Math.min(CYCLE, (ts - cycleStart) / 3600000));
+    return pad + (h / CYCLE) * (W - 2 * pad);
+  };
+  const yScale = function(pct) {
+    return H - pad - (Math.max(0, Math.min(100, pct)) / 100) * (H - 2 * pad);
+  };
+  const linear = 'M ' + pad + ' ' + (H - pad) + ' L ' + (W - pad) + ' ' + pad;
+
+  const segs = [];
+  for (let i = 0; i < arr.length; i++) {
+    const x = xScale(arr[i].ts), y = yScale(arr[i].used);
+    segs.push((i === 0 ? 'M ' : ' L ') + x.toFixed(2) + ' ' + y.toFixed(2));
+  }
+  const nowTs = Math.min(Date.now(), cycleEndMs);
+  const latest = arr[arr.length - 1];
+  if (nowTs > latest.ts) {
+    segs.push(' L ' + xScale(nowTs).toFixed(2) + ' ' + yScale(latest.used).toFixed(2));
+  }
+
+  svg.appendChild(makeSvgPath(linear, 'rgba(140,140,140,0.45)', '2 3'));
+  svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null));
+}
+
+// ---------- State (used/hrs/plan/auto) ----------
 function saveState() {
   try {
     localStorage.setItem('cmuc_used', document.getElementById('used').value);
     localStorage.setItem('cmuc_hrs',  document.getElementById('hours').value);
+    localStorage.setItem('cmuc_plan', planMode);
   } catch(e) {}
+  syncUrlHash();
 }
 function loadState() {
   try {
     const u = localStorage.getItem('cmuc_used');
     const h = localStorage.getItem('cmuc_hrs');
+    const p = localStorage.getItem('cmuc_plan');
     if (u !== null) document.getElementById('used').value = u;
     if (h !== null) document.getElementById('hours').value = h;
+    if (p === '20x' || p === '5x') planMode = p;
   } catch(e) {}
+}
+
+// ---------- URL hash sync ----------
+function parseHash() {
+  const h = window.location.hash.replace(/^#/, '');
+  if (!h) return {};
+  const out = {};
+  h.split('&').forEach(function(pair) {
+    const kv = pair.split('=');
+    if (kv.length === 2) out[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
+  });
+  return out;
+}
+function applyHash() {
+  const p = parseHash();
+  if (p.u !== undefined) {
+    const v = Math.max(0, Math.min(100, parseInt(p.u, 10)));
+    if (!isNaN(v)) document.getElementById('used').value = v;
+  }
+  if (p.h !== undefined) {
+    const v = Math.max(0, Math.min(CYCLE, parseFloat(p.h)));
+    if (!isNaN(v)) document.getElementById('hours').value = v;
+  }
+  if (p.p === '20x' || p.p === '5x') planMode = p.p;
+  return p.a === '1';
+}
+function syncUrlHash() {
+  const used = document.getElementById('used').value;
+  const hrs = document.getElementById('hours').value;
+  const params = ['u=' + used, 'p=' + planMode];
+  if (autoMode) params.push('a=1');
+  else params.push('h=' + hrs);
+  try { history.replaceState(null, '', '#' + params.join('&')); } catch(e) {}
+}
+
+// ---------- Misc UI ----------
+function getDayMarkIdx(hrs) {
+  const t = new Date(getCycleStartDate().getTime() + hrs * 3600000);
+  const day = t.getDay();
+  let idx = (day - settings.resetDay + 7) % 7;
+  if (day === settings.resetDay && hrs > 84) idx = 7;
+  return idx;
 }
 
 function applyPlanBtn() {
@@ -295,13 +743,12 @@ function applyPlanBtn() {
     btn.style.background = 'var(--text-success)'; btn.style.borderColor = 'var(--text-success)'; btn.style.color = 'var(--bg)';
   }
 }
-
 function togglePlan() {
   planMode = planMode === '20x' ? '5x' : '20x';
   applyPlanBtn();
+  saveState();
   update();
 }
-
 function toggleAuto() {
   autoMode = !autoMode;
   const btn = document.getElementById('auto-btn');
@@ -320,28 +767,32 @@ function toggleAuto() {
     clearInterval(autoTick);
     update();
   }
+  syncUrlHash();
 }
 
 function cls(v, lo, hi) { return v <= lo ? 'success' : v <= hi ? 'warning' : 'danger'; }
 function tint(v, lo, hi) { return 't-' + cls(v, lo, hi); }
 function colorCls(v, lo, hi) { return 'c-' + cls(v, lo, hi); }
-
 function setCard(id, tCls, valId, cCls) {
   document.getElementById(id).className = 'card ' + tCls;
-  document.getElementById(valId).className = 'metric-val ' + cCls;
+  if (valId) document.getElementById(valId).className = 'metric-val ' + cCls;
 }
 
-const _rs = {};
+const _rs = {};     // id -> current rAF handle
+const _rsTok = {};  // id -> generation token. Steps compare their token to this before mutating.
 function rollingSet(id, newText) {
   const el = document.getElementById(id);
   if (!el || el.textContent === newText) return;
   if (_rs[id]) cancelAnimationFrame(_rs[id]);
+  const tok = (_rsTok[id] || 0) + 1;
+  _rsTok[id] = tok;
   const numNew = parseFloat(newText), numOld = parseFloat(el.textContent);
   if (!isNaN(numNew) && !isNaN(numOld) && el.textContent !== '—' && newText !== '—') {
     const decimals = (newText.split('.')[1] || '').length;
     const suffix = newText.replace(/^[\d.+-]+/, '');
     const start = performance.now(), from = numOld, to = numNew;
     function step(ts) {
+      if (_rsTok[id] !== tok) return; // superseded by a newer call; drop this frame.
       const t = Math.min((ts - start) / 350, 1);
       const e = 1 - Math.pow(1 - t, 3);
       el.textContent = (from + (to - from) * e).toFixed(Math.min(decimals, 2)) + suffix;
@@ -373,8 +824,21 @@ function animateSlider(target) {
   _sliderAnim = requestAnimationFrame(step);
 }
 
+function setDeltaLine(over, dAbs) {
+  const el = document.getElementById('delta-line');
+  while (el.firstChild) el.removeChild(el.firstChild);
+  if (dAbs === null) return;
+  const arrow = document.createElement('span');
+  arrow.className = 'delta-arrow ' + (over ? 'up' : 'down');
+  arrow.textContent = over ? '▲' : '▼';
+  el.appendChild(arrow);
+  el.appendChild(document.createTextNode(' ' + dAbs + '% ' + (over ? 'over' : 'under') + ' quota'));
+}
+
+let _lastSnapshot = {};
+
 function update() {
-  const TOK = PLAN_TOKENS[planMode];
+  const TOK = planMode === '20x' ? settings.tokens20x : settings.tokens5x;
   const used = +document.getElementById('used').value;
   const hrs  = +document.getElementById('hours').value;
 
@@ -418,12 +882,10 @@ function update() {
   document.getElementById('p-time-pct').textContent = pctTime.toFixed(1) + '%';
 
   if (hrs > 0) {
-    const over = used > pctTime, dAbs = Math.abs(pctTime - used).toFixed(1);
-    document.getElementById('delta-line').innerHTML =
-      '<span style="color:' + (over ? 'var(--text-danger)' : 'var(--text-success)') + '">' +
-      (over ? '▲' : '▼') + '</span> ' + dAbs + '% ' + (over ? 'over' : 'under') + ' quota';
+    const over = used > pctTime;
+    setDeltaLine(over, Math.abs(pctTime - used).toFixed(1));
   } else {
-    document.getElementById('delta-line').textContent = '';
+    setDeltaLine(false, null);
   }
 
   if (hrs > 0) {
@@ -447,30 +909,74 @@ function update() {
   const burnPerHr = hrs > 0 ? tokUsed / hrs : 0;
   const burnPerDay = burnPerHr * 24;
 
-  if (burnPerHr > 0) {
+  const hrsToLimEl = document.getElementById('hrs-to-limit');
+  const hrsToLimSub = document.getElementById('hrs-to-limit-sub');
+  if (used >= 100) {
+    hrsToLimEl.textContent = '0h';
+    hrsToLimEl.className = 'metric-val c-danger';
+    hrsToLimSub.textContent = 'already at/past limit';
+  } else if (burnPerHr > 0) {
     const hrsToLim = (100 - used) / (used / hrs);
-    document.getElementById('hrs-to-limit').textContent = fmtHrs(hrsToLim);
-    document.getElementById('hrs-to-limit-sub').textContent = hrsToLim < remaining ? 'hits limit before reset' : 'beyond reset — fine';
-    document.getElementById('hrs-to-limit').className = 'metric-val ' + (hrsToLim < remaining ? 'c-danger' : 'c-success');
+    hrsToLimEl.textContent = fmtHrs(hrsToLim);
+    hrsToLimSub.textContent = hrsToLim < remaining ? 'hits limit before reset' : 'beyond reset — fine';
+    hrsToLimEl.className = 'metric-val ' + (hrsToLim < remaining ? 'c-danger' : 'c-success');
   } else {
-    document.getElementById('hrs-to-limit').textContent = '—';
-    document.getElementById('hrs-to-limit').className = 'metric-val';
-    document.getElementById('hrs-to-limit-sub').textContent = 'at current burn';
+    hrsToLimEl.textContent = '—';
+    hrsToLimEl.className = 'metric-val';
+    hrsToLimSub.textContent = 'at current burn';
   }
 
   rollingSet('tok-used', tokUsed.toFixed(1) + 'M');
   rollingSet('tok-left', tokLeft.toFixed(1) + 'M');
   document.getElementById('tok-burn-sub').textContent = burnPerHr > 0 ? 'burning ' + burnPerHr.toFixed(2) + ' MTok/hr' : '—';
 
+  // Burn: avg (since reset) and recent (last 2h from history)
   const sustain = TOK / CYCLE;
+  const cBurn = document.getElementById('card-burn');
+  const avgEl = document.getElementById('burn-avg');
+  const recEl = document.getElementById('burn-recent');
+  const recSub = document.getElementById('burn-recent-sub');
   if (hrs > 0) {
-    rollingSet('burn-rate', burnPerHr.toFixed(2));
-    setCard('card-burn', tint(burnPerHr, sustain, sustain * 1.2), 'burn-rate', colorCls(burnPerHr, sustain, sustain * 1.2));
+    avgEl.textContent = burnPerHr.toFixed(2);
+    avgEl.className = 'bval ' + colorCls(burnPerHr, sustain, sustain * 1.2);
+    const rec = recentBurn(2, TOK);
+    const tintBy = rec !== null ? Math.max(burnPerHr, rec) : burnPerHr;
+    cBurn.className = 'card ' + tint(tintBy, sustain, sustain * 1.2);
+    if (rec !== null) {
+      recEl.textContent = rec.toFixed(2);
+      recEl.className = 'bval ' + colorCls(rec, sustain, sustain * 1.2);
+      recSub.textContent = 'last 2h';
+    } else {
+      recEl.textContent = '—';
+      recEl.className = 'bval';
+      recSub.textContent = settings.historyEnabled ? 'not enough data' : 'history off';
+    }
   } else {
-    document.getElementById('burn-rate').textContent = '—';
-    setCard('card-burn', '', 'burn-rate', '');
+    avgEl.textContent = '—'; avgEl.className = 'bval';
+    recEl.textContent = '—'; recEl.className = 'bval';
+    cBurn.className = 'card';
+    recSub.textContent = 'last 2h';
   }
   rollingSet('daily-tok', hrs > 0 ? burnPerDay.toFixed(1) : '—');
+
+  // Resume-in card: show only when projected > 100%.
+  // Wait such that time-elapsed% catches up to used%: wait = (used/100)*CYCLE - hrs.
+  const resumeCard = document.getElementById('resume-card');
+  if (hrs > 0 && proj > 100) {
+    const waitHrs = Math.max(0, (used / 100) * CYCLE - hrs);
+    const shown = Math.min(waitHrs, remaining);
+    if (shown > 0.01) {
+      resumeCard.classList.add('on');
+      document.getElementById('resume-val').textContent = fmtHrs(shown);
+      document.getElementById('resume-sub').textContent = waitHrs > remaining
+        ? 'need longer than the cycle has left — tough week'
+        : 'pause this long to catch linear pace';
+    } else {
+      resumeCard.classList.remove('on');
+    }
+  } else {
+    resumeCard.classList.remove('on');
+  }
 
   const marks = document.querySelectorAll('.day-mark');
   const activeDayIdx = getDayMarkIdx(hrs);
@@ -479,22 +985,77 @@ function update() {
   const hint = document.getElementById('auto-hint');
   hint.textContent = fmtClockHint();
   hint.style.fontWeight = autoMode ? '700' : '400';
+
+  logUsage(used, hrs);
+  renderSparkline();
+  updateHistCount();
+  updateResetHint();
+
+  _lastSnapshot = { TOK: TOK, used: used, hrs: hrs, pctTime: pctTime, proj: proj, surplus: surplus, burnPerHr: burnPerHr };
 }
 
+// ---------- Steppers / wheel ----------
 function stepUsed(delta) {
   const sl = document.getElementById('used');
   sl.value = Math.min(100, Math.max(0, +sl.value + delta));
   saveState(); update();
 }
-
 document.getElementById('used').addEventListener('wheel', function(e) {
   e.preventDefault();
   stepUsed(e.deltaY < 0 ? 1 : -1);
 }, { passive: false });
-
 document.getElementById('used').addEventListener('input', function() { saveState(); update(); });
 document.getElementById('hours').addEventListener('input', function() { saveState(); update(); });
 
+// ---------- Copy to clipboard ----------
+function copyStatus() {
+  const s = _lastSnapshot;
+  if (!s.TOK) return;
+  const lines = [
+    'Claude Max ' + planMode + ' — ' + s.used + '% used at ' + s.hrs.toFixed(1) + 'h (' + s.pctTime.toFixed(1) + '% of cycle)',
+    'Projected: ' + s.proj.toFixed(2) + '% | Surplus: ' + (s.surplus >= 0 ? '+' : '') + s.surplus.toFixed(1) + '% | Burn: ' + s.burnPerHr.toFixed(2) + ' MTok/hr',
+    'Resets in ' + fmtHrs(getResetHrs()),
+  ];
+  const text = lines.join('\n');
+  const fb = document.getElementById('copy-fb');
+  const show = function() { fb.classList.add('on'); setTimeout(function() { fb.classList.remove('on'); }, 1200); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(show).catch(function() { fallbackCopy(text); show(); });
+  } else {
+    fallbackCopy(text); show();
+  }
+}
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch(e) {}
+}
+
+// ---------- Keyboard shortcuts ----------
+document.addEventListener('keydown', function(e) {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  const shift = e.shiftKey ? 5 : 1;
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); stepUsed(-shift); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); stepUsed(shift); }
+  else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePlan(); }
+  else if (e.key === 's' || e.key === 'S') { e.preventDefault(); document.getElementById('drawer').classList.contains('on') ? closeSettings() : openSettings(); }
+  else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copyStatus(); }
+  else if (e.key === 'Escape') { if (document.getElementById('drawer').classList.contains('on')) closeSettings(); }
+});
+
+// Drawer live-apply listeners
+['s-day','s-hour','s-tz','s-t20','s-t5','s-hist'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', onSettingChange);
+  document.getElementById(id).addEventListener('input', onSettingChange);
+});
+
+// ---------- Polling ----------
 setInterval(function() {
   if (autoMode) {
     const sl = document.getElementById('hours');
@@ -504,9 +1065,14 @@ setInterval(function() {
   update();
 }, 15000);
 
+// ---------- Boot ----------
+loadSettings();
 loadState();
-update();
+const wantAuto = applyHash();
+populateDrawer();
 applyPlanBtn();
+update();
+if (wantAuto) toggleAuto();
 </script>
 </body>
 </html>

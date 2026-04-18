@@ -2,7 +2,7 @@
 
 **Track your weekly Claude Max token budget in real time — no install, no build step, no account required.**
 
-![Version](https://img.shields.io/badge/version-v0.6-blue)
+![Version](https://img.shields.io/badge/version-v0.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Zero deps](https://img.shields.io/badge/dependencies-none-lightgrey)
 
@@ -10,7 +10,7 @@
 
 ## What it does
 
-Claude Max plans reset every Thursday at 10pm PT. Between resets, you have a finite token budget (~250M tokens/week on Max 20x, ~62.5M on Max 5x — community estimates). The calculator tells you:
+Claude Max plans reset weekly (default: Thursday 12pm PT, configurable in settings). Between resets, you have a finite token budget (~250M tokens/week on Max 20x, ~62.5M on Max 5x — community estimates). The calculator tells you:
 
 - Whether you're ahead or behind linear pace
 - Your projected end-of-week quota consumption at current burn rate
@@ -41,7 +41,7 @@ Click **AUTO** to lock the hours-elapsed slider to your system clock. It polls e
 Or stay in **MAN** mode and drag the **"hours elapsed"** slider manually if you want to model hypothetical scenarios (e.g., "what if I have 40% left at hour 120?").
 
 ### Step 3 — Select your plan
-Toggle between **20x** (~250M tokens/week) and **5x** (~62.5M tokens/week) in the token section.
+Toggle between **20x** (~250M tokens/week) and **5x** (~62.5M tokens/week) in the token section. Token totals are overridable in settings.
 
 ### Step 4 — Read the metrics
 
@@ -51,8 +51,25 @@ Toggle between **20x** (~250M tokens/week) and **5x** (~62.5M tokens/week) in th
 | **surplus / deficit** | How far ahead or behind linear pace you are, in % |
 | **daily budget** | % of your limit you can use per remaining day |
 | **hours left** | At current burn rate, how many hours until you'd exhaust the limit |
-| **burn rate** | MTok consumed per hour |
+| **burn rate — avg** | MTok/hr since reset |
+| **burn rate — recent** | MTok/hr computed from the last ~2h of tracked history |
 | **daily equivalent** | Your current hourly burn scaled to a 24h day |
+| **resume-in** (only when projected > 100%) | How long to pause to get back on linear pace |
+| **history sparkline** | Actual usage curve vs. linear pace, persisted across reloads |
+
+### Settings (gear icon, top right)
+
+- **Reset cycle**: day of week, hour, and timezone — adjust when Anthropic shifts the reset (new model launches sometimes change it).
+- **Plan tokens**: override the 20x / 5x weekly estimates if you've measured your own limit or Anthropic publishes actual numbers.
+- **History**: enable/disable snapshot tracking, clear the log manually.
+
+### Keyboard shortcuts
+
+`←` / `→` decrement/increment usage (hold Shift for ±5), `A` auto, `P` plan, `S` settings, `C` copy status, `Esc` close drawer.
+
+### URL state sync
+
+The URL hash (`#u=13&h=23&p=20x`) mirrors current state. Share or bookmark a specific scenario; pasting a URL loads those values.
 
 ### Reading the status bar
 
@@ -122,10 +139,11 @@ All colors are defined in `:root` and overridden in `@media (prefers-color-schem
 
 ## Caveats
 
-- **Token totals are not official.** ~250M tokens/week for Max 20x and ~62.5M for Max 5x are reverse-engineered community estimates. Anthropic does not publish these numbers. The actual limits may differ, change without notice, or vary by account.
-- **DST is not handled.** The Thursday 10pm PT reset is hardcoded in local JS date arithmetic. Around daylight saving transitions, this may be off by an hour.
+- **Token totals are not official.** ~250M tokens/week for Max 20x and ~62.5M for Max 5x are reverse-engineered community estimates. Anthropic does not publish these numbers. The actual limits may differ, change without notice, or vary by account. Override in settings if you have better numbers.
+- **Reset time can drift.** Anthropic has shifted the weekly reset hour on at least one model launch. The default is Thu 12pm PT; adjust via settings if it changes.
 - **Usage % must be entered manually.** There's no API to read your usage from claude.ai — you read the number from your account and enter it here.
-- **Projections assume constant burn rate.** If you have a heavy session tomorrow, the "hours to limit" estimate will be wrong. The calculator is a snapshot, not a forecast.
+- **Projections assume constant burn rate.** If you have a heavy session tomorrow, the "hours to limit" estimate will be wrong. The calculator is a snapshot, not a forecast. The "recent" burn rate (last 2h, from history) is closer to real-time.
+- **History is local-only.** Usage snapshots live in `localStorage` on the current browser. No server sync, no cross-device history.
 
 ---
 
