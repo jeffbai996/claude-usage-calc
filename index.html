@@ -1065,9 +1065,39 @@ setInterval(function() {
   update();
 }, 15000);
 
+// ---------- Extension bridge ----------
+// The Chrome extension (extension/) writes scraped usage data into
+// localStorage['cmuc_extension_snap']. If present and fresh, auto-fill the
+// usage % and plan toggle. URL hash and explicit user input still win
+// (loadExtensionSnap runs *before* applyHash on boot).
+function loadExtensionSnap(snap) {
+  try {
+    const raw = snap || JSON.parse(localStorage.getItem('cmuc_extension_snap') || 'null');
+    if (!raw) return false;
+    // Stale check: ignore snapshots older than 2h.
+    if (raw.capturedAt && Date.now() - raw.capturedAt > 2 * 60 * 60 * 1000) return false;
+    const weekly = raw.weeklyAll;
+    if (weekly && typeof weekly.pct === 'number') {
+      document.getElementById('used').value = Math.round(weekly.pct);
+    }
+    if (raw.plan === '20x' || raw.plan === '5x') {
+      planMode = raw.plan;
+      try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
+    }
+    return true;
+  } catch(e) { return false; }
+}
+window.addEventListener('cmuc-extension-snap', function(ev) {
+  if (loadExtensionSnap(ev.detail)) {
+    applyPlanBtn();
+    update();
+  }
+});
+
 // ---------- Boot ----------
 loadSettings();
 loadState();
+loadExtensionSnap();
 const wantAuto = applyHash();
 populateDrawer();
 applyPlanBtn();
