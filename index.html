@@ -65,6 +65,7 @@
     width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--text-secondary); padding: 0;
     transition: background .12s, color .12s, border-color .12s;
+    touch-action: manipulation;
   }
   .icon-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
   .icon-btn svg { width: 14px; height: 14px; }
@@ -91,6 +92,7 @@
     transition: background .15s, color .15s, border-color .15s;
     min-width: 48px;
     text-align: center;
+    touch-action: manipulation;
   }
   .toggle-btn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
   .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
@@ -104,6 +106,7 @@
     color: var(--text-secondary); font-size: 17px; font-weight: 400;
     cursor: pointer; user-select: none; line-height: 1;
     transition: background .12s, color .12s, border-color .12s;
+    touch-action: manipulation;
   }
   .stepper-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
   .stepper-btn:active { transform: scale(0.9); }
@@ -111,11 +114,11 @@
 
   /* Sparkline inside pace card */
   .sparkline-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
-  .sparkline-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .sparkline-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .sparkline-hdr .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
   .sparkline-hdr .sub { font-size: 10px; color: var(--text-secondary); font-style: italic; }
-  .sparkline-svg { display: block; width: 100%; height: 48px; }
-  .sparkline-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 14px 0; }
+  .sparkline-svg { display: block; width: 100%; height: auto; aspect-ratio: 240 / 90; }
+  .sparkline-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 28px 0; }
 
   /* Burn split card */
   .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
@@ -143,32 +146,63 @@
     position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100%;
     background: var(--bg); border-left: 0.5px solid var(--border);
     transform: translateX(100%); transition: transform .25s cubic-bezier(.2,.9,.3,1);
-    z-index: 50; padding: 18px 20px; overflow-y: auto;
-    display: flex; flex-direction: column; gap: 14px;
+    z-index: 50; overflow-y: auto; display: flex; flex-direction: column;
   }
   .drawer.on { transform: translateX(0); }
-  .drawer h2 { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; }
-  .drawer h2 button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; }
-  .drawer h2 button:hover { color: var(--text-primary); }
-  .drawer-section { border-top: 0.5px solid var(--border); padding-top: 12px; }
-  .drawer-section:first-of-type { border-top: none; padding-top: 0; }
-  .drawer-section h3 { font-size: 10px; color: var(--text-secondary); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 8px; }
-  .drawer-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .drawer-header {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--bg); padding: 16px 20px 13px;
+    border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+  }
+  .drawer h2 {
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    display: flex; justify-content: space-between; align-items: center; margin: 0;
+  }
+  .drawer-close-btn {
+    background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 6px;
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-secondary); padding: 0;
+    transition: background .12s, color .12s, border-color .12s;
+    touch-action: manipulation;
+  }
+  .drawer-close-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .drawer-close-btn svg { width: 14px; height: 14px; }
+  .drawer-body { padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .drawer-section { background: var(--bg-secondary); border-radius: 10px; padding: 12px 14px; }
+  .drawer-section h3 {
+    font-size: 10px; color: var(--text-secondary); font-weight: 600;
+    letter-spacing: .07em; text-transform: uppercase;
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border);
+  }
+  .drawer-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .drawer-section > .drawer-row:last-child { margin-bottom: 0; }
   .drawer-row label { font-size: 12px; color: var(--text-secondary); min-width: 70px; flex-shrink: 0; }
   .drawer-row select, .drawer-row input[type="number"] {
-    flex: 1; padding: 5px 8px; font-size: 12px; color: var(--text-primary);
-    background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 5px;
-    font-family: inherit;
+    flex: 1; padding: 6px 10px; font-size: 12px; color: var(--text-primary);
+    background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px;
+    font-family: inherit; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .drawer-row select:focus, .drawer-row input[type="number"]:focus {
+    border-color: var(--blue); box-shadow: 0 0 0 2px rgba(55,138,221,.15);
   }
   .drawer-row input[type="checkbox"] { accent-color: var(--blue); width: 16px; height: 16px; }
-  .drawer .hint { font-size: 10px; color: var(--text-secondary); font-style: italic; line-height: 1.5; margin-top: 2px; }
+  .drawer .hint {
+    font-size: 10px; color: var(--text-secondary); font-style: italic;
+    line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border);
+  }
   .drawer-btn {
-    padding: 7px 12px; font-size: 11px; font-weight: 500; border-radius: 6px;
-    border: 0.5px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);
-    cursor: pointer; transition: background .12s, color .12s;
+    padding: 8px 14px; font-size: 12px; font-weight: 500; border-radius: 8px;
+    border: 0.5px solid var(--border); background: var(--bg); color: var(--text-primary);
+    cursor: pointer; font-family: inherit; touch-action: manipulation;
+    transition: background .12s, color .12s, border-color .12s;
   }
   .drawer-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
-  .drawer-btn.danger:hover { background: var(--text-danger); border-color: var(--text-danger); }
+  .drawer-btn.danger { color: var(--text-danger); }
+  .drawer-btn.danger:hover { background: var(--text-danger); border-color: var(--text-danger); color: #fff; }
+  .drawer-footer {
+    font-size: 10px; color: var(--text-secondary); font-style: italic; line-height: 1.6;
+    padding: 4px 2px;
+  }
 
   /* Mobile touch tuning */
   @media (pointer: coarse) {
@@ -178,6 +212,7 @@
     .toggle-btn { min-height: 32px; padding: 6px 0; }
     .icon-btn { width: 36px; height: 36px; }
     .icon-btn svg { width: 16px; height: 16px; }
+    .drawer-close-btn { width: 36px; height: 36px; }
   }
   @media (max-width: 480px) {
     .drawer { width: 100%; }
@@ -189,7 +224,7 @@
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.7</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.7.1</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
@@ -225,8 +260,8 @@
       <span class="auto-lbl" id="auto-hint"></span>
     </div>
     <div class="stepper-wrap">
-      <button class="stepper-btn" onclick="stepUsed(-1)">−</button>
-      <button class="stepper-btn" onclick="stepUsed(1)">+</button>
+      <button class="stepper-btn" data-delta="-1" onclick="stepUsed(-1)">−</button>
+      <button class="stepper-btn" data-delta="1" onclick="stepUsed(1)">+</button>
     </div>
   </div>
 </div>
@@ -273,7 +308,7 @@
       <span class="lbl">history</span>
       <span class="sub" id="spark-sub">actual vs linear pace</span>
     </div>
-    <svg class="sparkline-svg" id="spark" viewBox="0 0 200 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg class="sparkline-svg" id="spark" viewBox="0 0 240 90" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
     <div class="sparkline-empty" id="spark-empty" style="display:none">Move the usage slider to start tracking history.</div>
   </div>
 </div>
@@ -342,57 +377,66 @@
 <!-- Settings drawer -->
 <div class="scrim" id="scrim" onclick="closeSettings()"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-labelledby="drawer-title">
-  <h2 id="drawer-title"><span>settings</span><button onclick="closeSettings()" aria-label="close">×</button></h2>
-
-  <div class="drawer-section">
-    <h3>reset cycle</h3>
-    <div class="drawer-row">
-      <label for="s-day">day</label>
-      <select id="s-day"></select>
-    </div>
-    <div class="drawer-row">
-      <label for="s-hour">hour</label>
-      <input type="number" id="s-hour" min="0" max="23" step="1">
-    </div>
-    <div class="drawer-row">
-      <label for="s-tz">timezone</label>
-      <select id="s-tz"></select>
-    </div>
-    <div class="hint" id="s-reset-hint">—</div>
+  <div class="drawer-header">
+    <h2 id="drawer-title">
+      <span>settings</span>
+      <button class="drawer-close-btn" onclick="closeSettings()" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </h2>
   </div>
 
-  <div class="drawer-section">
-    <h3>plan tokens (MTok / week)</h3>
-    <div class="drawer-row">
-      <label for="s-t20">20x</label>
-      <input type="number" id="s-t20" min="0" step="1">
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <h3>reset cycle</h3>
+      <div class="drawer-row">
+        <label for="s-day">day</label>
+        <select id="s-day"></select>
+      </div>
+      <div class="drawer-row">
+        <label for="s-hour">hour</label>
+        <input type="number" id="s-hour" min="0" max="23" step="1">
+      </div>
+      <div class="drawer-row">
+        <label for="s-tz">timezone</label>
+        <select id="s-tz"></select>
+      </div>
+      <div class="hint" id="s-reset-hint">—</div>
     </div>
-    <div class="drawer-row">
-      <label for="s-t5">5x</label>
-      <input type="number" id="s-t5" min="0" step="0.5">
-    </div>
-    <div class="hint">Community-estimated weekly totals. Override if Anthropic publishes or you've measured your own limit.</div>
-  </div>
 
-  <div class="drawer-section">
-    <h3>history</h3>
-    <div class="drawer-row">
-      <label for="s-hist">track</label>
-      <input type="checkbox" id="s-hist">
-      <span class="auto-lbl" id="s-hist-count">0 entries</span>
+    <div class="drawer-section">
+      <h3>plan tokens (MTok / week)</h3>
+      <div class="drawer-row">
+        <label for="s-t20">20x</label>
+        <input type="number" id="s-t20" min="0" step="1">
+      </div>
+      <div class="drawer-row">
+        <label for="s-t5">5x</label>
+        <input type="number" id="s-t5" min="0" step="0.5">
+      </div>
+      <div class="hint">Community-estimated weekly totals. Override if Anthropic publishes or you've measured your own limit.</div>
     </div>
-    <div class="drawer-row">
-      <button class="drawer-btn danger" onclick="clearHistoryNow()">clear history</button>
+
+    <div class="drawer-section">
+      <h3>history</h3>
+      <div class="drawer-row">
+        <label for="s-hist">track</label>
+        <input type="checkbox" id="s-hist">
+        <span class="auto-lbl" id="s-hist-count">0 entries</span>
+      </div>
+      <div class="drawer-row">
+        <button class="drawer-btn danger" onclick="clearHistoryNow()">clear history</button>
+      </div>
+      <div class="hint">Usage snapshots are stored in localStorage and auto-clear each reset.</div>
     </div>
-    <div class="hint">Usage snapshots are stored in localStorage and auto-clear each reset.</div>
-  </div>
 
-  <div class="drawer-section">
-    <button class="drawer-btn" onclick="resetSettings()">reset to defaults</button>
-  </div>
+    <div class="drawer-section">
+      <button class="drawer-btn" onclick="resetSettings()">reset to defaults</button>
+    </div>
 
-  <div class="drawer-section" style="font-size:10px;color:var(--text-secondary);font-style:italic">
-    Shortcuts: ←/→ usage, A auto, P plan, S settings, C copy, Esc close.
+    <div class="drawer-footer">
+      Shortcuts: ←/→ usage, A auto, P plan, S settings, C copy, Esc close.
+    </div>
   </div>
 </aside>
 
@@ -410,6 +454,7 @@ const DEFAULT_SETTINGS = {
 let settings = Object.assign({}, DEFAULT_SETTINGS);
 let planMode = '20x';
 let autoMode = false, autoTick = null;
+let _usedDragging = false;
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -585,6 +630,7 @@ function pruneHistory(arr) {
 }
 function logUsage(used, hrs) {
   if (!settings.historyEnabled) return;
+  if (_usedDragging) return;
   const arr = pruneHistory(loadHistory());
   const now = Date.now();
   const last = arr[arr.length - 1];
@@ -595,6 +641,11 @@ function logUsage(used, hrs) {
     // Pruning removed cross-cycle entries; persist the pruned version.
     saveHistoryArr(arr);
   }
+}
+let _logTimer = null;
+function scheduledLog(used, hrs) {
+  if (_logTimer) clearTimeout(_logTimer);
+  _logTimer = setTimeout(function() { logUsage(used, hrs); }, 1500);
 }
 function clearHistoryNow() {
   try { localStorage.removeItem('cmuc_history'); } catch(e) {}
@@ -621,19 +672,30 @@ function setSparkEmpty(msg) {
   const svg = document.getElementById('spark');
   const empty = document.getElementById('spark-empty');
   while (svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.style.display = 'none';
   empty.style.display = 'block';
   empty.textContent = msg;
 }
-function makeSvgPath(d, stroke, dash) {
-  const p = document.createElementNS(SVG_NS, 'path');
-  p.setAttribute('d', d);
-  p.setAttribute('stroke', stroke);
-  p.setAttribute('stroke-width', dash ? '1' : '1.5');
-  p.setAttribute('fill', 'none');
-  p.setAttribute('stroke-linejoin', 'round');
-  p.setAttribute('stroke-linecap', 'round');
-  if (dash) p.setAttribute('stroke-dasharray', dash);
-  return p;
+function makeSvgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function makeSvgPath(d, stroke, dash, width) {
+  const attrs = {
+    d: d, stroke: stroke, 'stroke-width': width || (dash ? '0.8' : '1.5'),
+    fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+  };
+  if (dash) attrs['stroke-dasharray'] = dash;
+  return makeSvgEl('path', attrs);
+}
+function makeSvgText(x, y, txt, anchor, fill) {
+  const t = makeSvgEl('text', {
+    x: x, y: y, 'font-size': '4.5', 'font-family': 'inherit',
+    fill: fill || 'rgba(130,130,130,0.75)', 'text-anchor': anchor || 'middle'
+  });
+  t.textContent = txt;
+  return t;
 }
 function renderSparkline() {
   if (!settings.historyEnabled) { setSparkEmpty('History tracking disabled.'); return; }
@@ -643,33 +705,93 @@ function renderSparkline() {
   const svg = document.getElementById('spark');
   const empty = document.getElementById('spark-empty');
   while (svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.style.display = 'block';
   empty.style.display = 'none';
+
+  // Layout: left pad for %-axis labels, right pad for MTok labels, bottom for time labels
+  const VW = 240, VH = 90;
+  const L = 22, R = 28, T = 4, B = 14;
+  const CW = VW - L - R, CH = VH - T - B; // chart inner area
 
   const cycleStart = getCycleStartDate().getTime();
   const cycleEndMs = cycleStart + CYCLE * 3600000;
-  const W = 200, H = 48, pad = 2;
-  const xScale = function(ts) {
-    const h = Math.max(0, Math.min(CYCLE, (ts - cycleStart) / 3600000));
-    return pad + (h / CYCLE) * (W - 2 * pad);
-  };
-  const yScale = function(pct) {
-    return H - pad - (Math.max(0, Math.min(100, pct)) / 100) * (H - 2 * pad);
-  };
-  const linear = 'M ' + pad + ' ' + (H - pad) + ' L ' + (W - pad) + ' ' + pad;
+  const TOK = settings['tokens' + planMode] || DEFAULT_SETTINGS['tokens' + planMode];
 
+  const xOf = function(ts) {
+    const h = Math.max(0, Math.min(CYCLE, (ts - cycleStart) / 3600000));
+    return L + (h / CYCLE) * CW;
+  };
+  const yOf = function(pct) {
+    return T + CH - (Math.max(0, Math.min(100, pct)) / 100) * CH;
+  };
+
+  const PCT_CLR  = 'rgba(85,155,220,0.75)';   // blue-tinted — matches the usage bar
+  const TOK_CLR  = 'rgba(160,140,110,0.75)';  // warm amber — token budget feel
+  const TIME_CLR = 'rgba(120,120,120,0.65)';  // neutral gray for time axis
+
+  // Gridlines at 25 / 50 / 75 %
+  [25, 50, 75].forEach(function(pct) {
+    const y = yOf(pct).toFixed(1);
+    svg.appendChild(makeSvgPath(
+      'M ' + L + ' ' + y + ' L ' + (L + CW) + ' ' + y,
+      'rgba(120,120,120,0.18)', '2 2', '0.7'
+    ));
+    svg.appendChild(makeSvgText(L - 3, (+y + 2).toFixed(1), pct + '%', 'end', PCT_CLR));
+    const tok = (TOK * pct / 100).toFixed(0);
+    svg.appendChild(makeSvgText(L + CW + 3, (+y + 2).toFixed(1), tok + 'M', 'start', TOK_CLR));
+  });
+
+  // 0% and 100% axis ticks
+  svg.appendChild(makeSvgText(L - 3, (T + CH + 2).toFixed(1), '0%', 'end', PCT_CLR));
+  svg.appendChild(makeSvgText(L + CW + 3, (T + CH + 2).toFixed(1), '0M', 'start', TOK_CLR));
+  svg.appendChild(makeSvgText(L - 3, (T + 2).toFixed(1), '100%', 'end', PCT_CLR));
+  svg.appendChild(makeSvgText(L + CW + 3, (T + 2).toFixed(1), TOK + 'M', 'start', TOK_CLR));
+
+  // Chart border
+  svg.appendChild(makeSvgPath(
+    'M ' + L + ' ' + T + ' L ' + L + ' ' + (T + CH) + ' L ' + (L + CW) + ' ' + (T + CH),
+    'rgba(120,120,120,0.3)', null, '0.7'
+  ));
+
+  // Time labels along bottom
+  const timeTicks = [0, 24, 48, 72, 96, 120, 144, 168];
+  timeTicks.forEach(function(h) {
+    const x = (L + (h / CYCLE) * CW).toFixed(1);
+    const yLine = T + CH;
+    svg.appendChild(makeSvgPath(
+      'M ' + x + ' ' + yLine + ' L ' + x + ' ' + (yLine + 2),
+      'rgba(120,120,120,0.4)', null, '0.7'
+    ));
+    svg.appendChild(makeSvgText(x, (yLine + 7).toFixed(1), h + 'h', 'middle', TIME_CLR));
+  });
+
+  // Dashed linear-pace line
+  svg.appendChild(makeSvgPath(
+    'M ' + L + ' ' + (T + CH) + ' L ' + (L + CW) + ' ' + T,
+    'rgba(140,140,140,0.5)', '3 3', '1'
+  ));
+
+  // Actual usage curve
   const segs = [];
   for (let i = 0; i < arr.length; i++) {
-    const x = xScale(arr[i].ts), y = yScale(arr[i].used);
-    segs.push((i === 0 ? 'M ' : ' L ') + x.toFixed(2) + ' ' + y.toFixed(2));
+    const x = xOf(arr[i].ts).toFixed(2), y = yOf(arr[i].used).toFixed(2);
+    segs.push((i === 0 ? 'M ' : ' L ') + x + ' ' + y);
   }
   const nowTs = Math.min(Date.now(), cycleEndMs);
   const latest = arr[arr.length - 1];
   if (nowTs > latest.ts) {
-    segs.push(' L ' + xScale(nowTs).toFixed(2) + ' ' + yScale(latest.used).toFixed(2));
+    segs.push(' L ' + xOf(nowTs).toFixed(2) + ' ' + yOf(latest.used).toFixed(2));
   }
+  svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null, '1.5'));
 
-  svg.appendChild(makeSvgPath(linear, 'rgba(140,140,140,0.45)', '2 3'));
-  svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null));
+  // Current-position dot
+  const dotX = xOf(Math.min(Date.now(), cycleEndMs));
+  const dotY = yOf(latest.used);
+  const dot = makeSvgEl('circle', {
+    cx: dotX.toFixed(2), cy: dotY.toFixed(2), r: '2.5',
+    fill: 'var(--blue)', stroke: 'var(--bg)', 'stroke-width': '1'
+  });
+  svg.appendChild(dot);
 }
 
 // ---------- State (used/hrs/plan/auto) ----------
@@ -986,7 +1108,7 @@ function update() {
   hint.textContent = fmtClockHint();
   hint.style.fontWeight = autoMode ? '700' : '400';
 
-  logUsage(used, hrs);
+  scheduledLog(used, hrs);
   renderSparkline();
   updateHistCount();
   updateResetHint();
@@ -1004,8 +1126,24 @@ document.getElementById('used').addEventListener('wheel', function(e) {
   e.preventDefault();
   stepUsed(e.deltaY < 0 ? 1 : -1);
 }, { passive: false });
+// Track drag state so logUsage ignores intermediate drag positions.
+document.getElementById('used').addEventListener('pointerdown', function() { _usedDragging = true; });
+document.getElementById('used').addEventListener('pointerup', function() {
+  _usedDragging = false;
+  saveState(); update();
+});
 document.getElementById('used').addEventListener('input', function() { saveState(); update(); });
 document.getElementById('hours').addEventListener('input', function() { saveState(); update(); });
+
+// Touchstart on stepper buttons: fires immediately (no 300ms delay) and
+// preventDefault stops the browser from also firing click (no double-call)
+// and disables double-tap zoom on those elements.
+document.querySelectorAll('.stepper-btn').forEach(function(btn) {
+  btn.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    stepUsed(parseInt(btn.dataset.delta, 10));
+  }, { passive: false });
+});
 
 // ---------- Copy to clipboard ----------
 function copyStatus() {
