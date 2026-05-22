@@ -74,6 +74,7 @@
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
   .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
+  .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; padding-left: 100px; margin: -4px 0 5px; }
   .toggle-btn {
     font-family: "Google Sans", "Anthropic Sans", -apple-system, sans-serif;
     font-size: 11px;
@@ -218,13 +219,17 @@
     .drawer { width: 100%; }
     body { padding: 1rem; }
   }
+  @media (max-width: 360px) {
+    .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .g3 > :last-child { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.7.1</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.8</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
@@ -243,6 +248,7 @@
     <input type="range" min="0" max="100" value="13" step="1" id="used">
     <span class="val" id="used-out">13%</span>
   </div>
+  <div id="ext-snap-hint" class="ext-snap-hint" style="display:none"></div>
   <div class="row-ctrl" style="margin-bottom:3px">
     <label>hours elapsed</label>
     <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
@@ -455,6 +461,8 @@ let settings = Object.assign({}, DEFAULT_SETTINGS);
 let planMode = '20x';
 let autoMode = false, autoTick = null;
 let _usedDragging = false;
+let _extSnapAt = 0;
+let _lastMeta = 0;
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -642,11 +650,6 @@ function logUsage(used, hrs) {
     saveHistoryArr(arr);
   }
 }
-let _logTimer = null;
-function scheduledLog(used, hrs) {
-  if (_logTimer) clearTimeout(_logTimer);
-  _logTimer = setTimeout(function() { logUsage(used, hrs); }, 1500);
-}
 function clearHistoryNow() {
   try { localStorage.removeItem('cmuc_history'); } catch(e) {}
   updateHistCount();
@@ -786,6 +789,19 @@ function renderSparkline() {
   }
   svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null, '1.5'));
 
+  // Dots at logged data points — spaced to avoid clutter on dense history
+  let lastDotX = -Infinity;
+  for (let i = 0; i < arr.length; i++) {
+    const cx = xOf(arr[i].ts);
+    if (cx - lastDotX >= 5) {
+      svg.appendChild(makeSvgEl('circle', {
+        cx: cx.toFixed(2), cy: yOf(arr[i].used).toFixed(2),
+        r: '1.5', fill: 'var(--blue)', opacity: '0.55'
+      }));
+      lastDotX = cx;
+    }
+  }
+
   // Current-position dot at the actual slider value, not the last logged value
   const dotX = xOf(Math.min(Date.now(), cycleEndMs));
   const dotY = yOf(currentUsed);
@@ -806,6 +822,7 @@ function saveState() {
   syncUrlHash();
 }
 function loadState() {
+  let wantAuto = false;
   try {
     const u = localStorage.getItem('cmuc_used');
     const h = localStorage.getItem('cmuc_hrs');
@@ -813,7 +830,9 @@ function loadState() {
     if (u !== null) document.getElementById('used').value = u;
     if (h !== null) document.getElementById('hours').value = h;
     if (p === '20x' || p === '5x') planMode = p;
+    wantAuto = localStorage.getItem('cmuc_auto') === '1';
   } catch(e) {}
+  return wantAuto;
 }
 
 // ---------- URL hash sync ----------
@@ -875,6 +894,7 @@ function togglePlan() {
 }
 function toggleAuto() {
   autoMode = !autoMode;
+  try { localStorage.setItem('cmuc_auto', autoMode ? '1' : '0'); } catch(e) {}
   const btn = document.getElementById('auto-btn');
   const sl = document.getElementById('hours');
   btn.classList.toggle('on', autoMode);
@@ -961,6 +981,23 @@ function setDeltaLine(over, dAbs) {
 
 let _lastSnapshot = {};
 
+function maybeUpdateMeta() {
+  const now = Date.now();
+  if (now - _lastMeta > 60000) {
+    _lastMeta = now;
+    updateHistCount();
+    updateResetHint();
+  }
+}
+function updateExtHint() {
+  const el = document.getElementById('ext-snap-hint');
+  if (!el) return;
+  if (!_extSnapAt) { el.style.display = 'none'; return; }
+  const ageSec = Math.floor((Date.now() - _extSnapAt) / 1000);
+  const ageStr = ageSec < 60 ? 'just now' : Math.floor(ageSec / 60) + 'm ago';
+  el.textContent = 'via extension · synced ' + ageStr;
+  el.style.display = '';
+}
 function update() {
   const TOK = planMode === '20x' ? settings.tokens20x : settings.tokens5x;
   const used = +document.getElementById('used').value;
@@ -1110,10 +1147,9 @@ function update() {
   hint.textContent = fmtClockHint();
   hint.style.fontWeight = autoMode ? '700' : '400';
 
-  scheduledLog(used, hrs);
+  logUsage(used, hrs);
   renderSparkline();
-  updateHistCount();
-  updateResetHint();
+  maybeUpdateMeta();
 
   _lastSnapshot = { TOK: TOK, used: used, hrs: hrs, pctTime: pctTime, proj: proj, surplus: surplus, burnPerHr: burnPerHr };
 }
@@ -1201,6 +1237,7 @@ setInterval(function() {
     const sl = document.getElementById('hours');
     sl.value = getAutoHours().toFixed(3);
   }
+  updateExtHint();
   saveState();
   update();
 }, 15000);
@@ -1224,6 +1261,8 @@ function loadExtensionSnap(snap) {
       planMode = raw.plan;
       try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
     }
+    _extSnapAt = raw.capturedAt || Date.now();
+    updateExtHint();
     return true;
   } catch(e) { return false; }
 }
@@ -1236,13 +1275,15 @@ window.addEventListener('cmuc-extension-snap', function(ev) {
 
 // ---------- Boot ----------
 loadSettings();
-loadState();
+const storedAuto = loadState();
 loadExtensionSnap();
-const wantAuto = applyHash();
+const hashWantAuto = applyHash();
 populateDrawer();
 applyPlanBtn();
 update();
-if (wantAuto) toggleAuto();
+// URL `a=1` wins; if no explicit `h=` in hash, fall back to localStorage
+const activateAuto = hashWantAuto || (storedAuto && !window.location.hash.includes('h='));
+if (activateAuto) toggleAuto();
 </script>
 </body>
 </html>
