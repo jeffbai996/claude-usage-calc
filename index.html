@@ -771,22 +771,24 @@ function renderSparkline() {
     'rgba(140,140,140,0.5)', '3 3', '1'
   ));
 
-  // Actual usage curve
+  // Actual usage curve — extend to current slider value so the live endpoint
+  // is diagonal rather than horizontal when usage has changed since last log.
+  const currentUsed = +document.getElementById('used').value;
+  const nowTs = Math.min(Date.now(), cycleEndMs);
+  const latest = arr[arr.length - 1];
   const segs = [];
   for (let i = 0; i < arr.length; i++) {
     const x = xOf(arr[i].ts).toFixed(2), y = yOf(arr[i].used).toFixed(2);
     segs.push((i === 0 ? 'M ' : ' L ') + x + ' ' + y);
   }
-  const nowTs = Math.min(Date.now(), cycleEndMs);
-  const latest = arr[arr.length - 1];
   if (nowTs > latest.ts) {
-    segs.push(' L ' + xOf(nowTs).toFixed(2) + ' ' + yOf(latest.used).toFixed(2));
+    segs.push(' L ' + xOf(nowTs).toFixed(2) + ' ' + yOf(currentUsed).toFixed(2));
   }
   svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null, '1.5'));
 
-  // Current-position dot
+  // Current-position dot at the actual slider value, not the last logged value
   const dotX = xOf(Math.min(Date.now(), cycleEndMs));
-  const dotY = yOf(latest.used);
+  const dotY = yOf(currentUsed);
   const dot = makeSvgEl('circle', {
     cx: dotX.toFixed(2), cy: dotY.toFixed(2), r: '2.5',
     fill: 'var(--blue)', stroke: 'var(--bg)', 'stroke-width': '1'
