@@ -905,6 +905,24 @@ function syncUrlHash() {
 }
 
 // ---------- Misc UI ----------
+// Single-letter-ish day abbreviations indexed by getDay() (0=Sun).
+// Su/M/Tu/W/Th/F/S — matches the original hardcoded axis style.
+const DAY_MARKS_SHORT = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'S'];
+
+// Render the 8 day ticks under the hours slider, STARTING from the configured
+// reset day (not a hardcoded Thursday). The axis spans one 168h cycle, so the
+// 8th tick is the reset day again (next reset). Previously these labels were
+// baked into the HTML as "Th F S Su M Tu W Th" — correct only while reset was
+// Thursday. Once the reset day became user-configurable, the labels drifted
+// out of sync with the actual cycle (the highlight tracked resetDay but the
+// letters didn't). Generating them from settings.resetDay keeps them aligned.
+function renderDayMarks() {
+  const marks = document.querySelectorAll('.day-mark');
+  marks.forEach(function(m, i) {
+    m.textContent = DAY_MARKS_SHORT[(settings.resetDay + i) % 7];
+  });
+}
+
 function getDayMarkIdx(hrs) {
   const t = new Date(getCycleStartDate().getTime() + hrs * 3600000);
   const day = t.getDay();
@@ -1175,6 +1193,7 @@ function update() {
     resumeCard.classList.remove('on');
   }
 
+  renderDayMarks();
   const marks = document.querySelectorAll('.day-mark');
   const activeDayIdx = getDayMarkIdx(hrs);
   marks.forEach(function(m, i) { m.classList.toggle('active', i === activeDayIdx); });
