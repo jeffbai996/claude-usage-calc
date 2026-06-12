@@ -700,6 +700,34 @@ function makeSvgText(x, y, txt, anchor, fill) {
   t.textContent = txt;
   return t;
 }
+// Build a smoothed path through {x,y} points using Catmull-Rom → cubic Bézier.
+// Control-point Y is clamped to each segment's endpoint range so monotonic data
+// (cumulative usage) never overshoots into visible wiggles.
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  if (pts.length === 2) {
+    return 'M ' + pts[0].x.toFixed(2) + ' ' + pts[0].y.toFixed(2) +
+           ' L ' + pts[1].x.toFixed(2) + ' ' + pts[1].y.toFixed(2);
+  }
+  let d = 'M ' + pts[0].x.toFixed(2) + ' ' + pts[0].y.toFixed(2);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || pts[i + 1];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    let cp1y = p1.y + (p2.y - p0.y) / 6;
+    let cp2y = p2.y - (p3.y - p1.y) / 6;
+    const ymin = Math.min(p1.y, p2.y), ymax = Math.max(p1.y, p2.y);
+    cp1y = Math.max(ymin, Math.min(ymax, cp1y));
+    cp2y = Math.max(ymin, Math.min(ymax, cp2y));
+    d += ' C ' + cp1x.toFixed(2) + ' ' + cp1y.toFixed(2) + ' ' +
+         cp2x.toFixed(2) + ' ' + cp2y.toFixed(2) + ' ' +
+         p2.x.toFixed(2) + ' ' + p2.y.toFixed(2);
+  }
+  return d;
+}
 function renderSparkline() {
   if (!settings.historyEnabled) { setSparkEmpty('History tracking disabled.'); return; }
   const arr = pruneHistory(loadHistory());
@@ -774,37 +802,45 @@ function renderSparkline() {
     'rgba(140,140,140,0.5)', '3 3', '1'
   ));
 
-  // Actual usage curve — extend to current slider value so the live endpoint
-  // is diagonal rather than horizontal when usage has changed since last log.
+  // Build curve vertices. logUsage() re-records the same usage value every
+  // ~10min, producing long flat runs (and near-vertical steps when it finally
+  // changes) — a jagged staircase. Collapse each run to its first occurrence
+  // (the transition point) so we connect the points where usage actually moved.
   const currentUsed = +document.getElementById('used').value;
   const nowTs = Math.min(Date.now(), cycleEndMs);
-  const latest = arr[arr.length - 1];
-  const segs = [];
+  const pts = [];
   for (let i = 0; i < arr.length; i++) {
-    const x = xOf(arr[i].ts).toFixed(2), y = yOf(arr[i].used).toFixed(2);
-    segs.push((i === 0 ? 'M ' : ' L ') + x + ' ' + y);
+    if (i === 0 || arr[i].used !== arr[i - 1].used) {
+      pts.push({ x: xOf(arr[i].ts), y: yOf(arr[i].used) });
+    }
   }
-  if (nowTs > latest.ts) {
-    segs.push(' L ' + xOf(nowTs).toFixed(2) + ' ' + yOf(currentUsed).toFixed(2));
+  // Always anchor the live endpoint at the current slider value so the trailing
+  // segment reflects where usage actually is right now.
+  const liveX = xOf(nowTs), liveY = yOf(currentUsed);
+  const lastV = pts[pts.length - 1];
+  if (!lastV || Math.abs(lastV.x - liveX) > 0.4 || Math.abs(lastV.y - liveY) > 0.4) {
+    pts.push({ x: liveX, y: liveY });
   }
-  svg.appendChild(makeSvgPath(segs.join(''), 'var(--blue)', null, '1.5'));
 
-  // Dots at logged data points — spaced to avoid clutter on dense history
+  // Smoothed actual-usage curve through the transition vertices.
+  svg.appendChild(makeSvgPath(smoothPath(pts), 'var(--blue)', null, '1.5'));
+
+  // Dots at transition vertices (skip the final live point — it gets its own
+  // larger dot below), spaced to avoid clutter when transitions cluster.
   let lastDotX = -Infinity;
-  for (let i = 0; i < arr.length; i++) {
-    const cx = xOf(arr[i].ts);
-    if (cx - lastDotX >= 5) {
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (pts[i].x - lastDotX >= 6) {
       svg.appendChild(makeSvgEl('circle', {
-        cx: cx.toFixed(2), cy: yOf(arr[i].used).toFixed(2),
+        cx: pts[i].x.toFixed(2), cy: pts[i].y.toFixed(2),
         r: '1.5', fill: 'var(--blue)', opacity: '0.55'
       }));
-      lastDotX = cx;
+      lastDotX = pts[i].x;
     }
   }
 
   // Current-position dot at the actual slider value, not the last logged value
-  const dotX = xOf(Math.min(Date.now(), cycleEndMs));
-  const dotY = yOf(currentUsed);
+  const dotX = liveX;
+  const dotY = liveY;
   const dot = makeSvgEl('circle', {
     cx: dotX.toFixed(2), cy: dotY.toFixed(2), r: '2.5',
     fill: 'var(--blue)', stroke: 'var(--bg)', 'stroke-width': '1'
