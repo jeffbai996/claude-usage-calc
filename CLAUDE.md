@@ -26,7 +26,7 @@ Deploy by dropping `index.html` anywhere — GitHub Pages, Netlify, local open.
 | `getAutoHours()` | Hours elapsed since last reset from system clock |
 | `getResetHrs()` | Hours until next reset |
 | `update()` | Master render — reads sliders/settings, recomputes all metrics, updates DOM, logs history, redraws sparkline |
-| `logUsage(used, hrs)` | Appends to history if `used` changed or >10min since last entry. Prunes cross-cycle entries. |
+| `logUsage(used, hrs)` | Appends to history if `used` changed or >10min since last entry. While dragging, throttled to one log per 300ms (`DRAG_LOG_THROTTLE_MS`) instead of skipped entirely — a fast drag still leaves real intermediate points. Prunes cross-cycle entries. |
 | `recentBurn(hoursBack, TOK)` | MTok/hr computed from history delta over last N hours. Returns null if <2 entries or <0.05h span. |
 | `renderSparkline()` | Draws inline SVG: dotted linear pace line + solid blue actual usage curve. Uses `createElementNS` (no innerHTML). |
 | `rollingSet(id, val)` | Animated number transition via rAF, cubic-out 350ms |

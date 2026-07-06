@@ -636,11 +636,19 @@ function pruneHistory(arr) {
   if (out.length > 500) out = out.slice(out.length - 500);
   return out;
 }
+// While actively dragging, still log — but throttled — so a fast slider move
+// leaves a trail of real intermediate points instead of one big jump from the
+// last settled value straight to wherever the drag ends.
+let _lastDragLogTs = 0;
+const DRAG_LOG_THROTTLE_MS = 300;
 function logUsage(used, hrs) {
   if (!settings.historyEnabled) return;
-  if (_usedDragging) return;
-  const arr = pruneHistory(loadHistory());
   const now = Date.now();
+  if (_usedDragging) {
+    if (now - _lastDragLogTs < DRAG_LOG_THROTTLE_MS) return;
+    _lastDragLogTs = now;
+  }
+  const arr = pruneHistory(loadHistory());
   const last = arr[arr.length - 1];
   if (!last || last.used !== used || (now - last.ts) > 10 * 60 * 1000) {
     arr.push({ ts: now, used: used, hrs: hrs });
