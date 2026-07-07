@@ -2,7 +2,7 @@
 
 **Track your weekly Claude Max token budget in real time — no install, no build step, no account required.**
 
-![Version](https://img.shields.io/badge/version-v0.8-blue)
+![Version](https://img.shields.io/badge/version-v0.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Zero deps](https://img.shields.io/badge/dependencies-none-lightgrey)
 
@@ -17,7 +17,7 @@ Claude Max plans reset weekly (default: Thursday 12pm PT, configurable in settin
 - How many hours until you'd theoretically hit the limit
 - Your daily token budget for the remaining days
 - Surplus or deficit vs. time elapsed
-- A history chart — actual usage curve vs. linear pace, persisted across reloads
+- A daily burn chart — one bar per day of the cycle, persisted across reloads
 
 It syncs to your system clock automatically, so the "hours elapsed since reset" stays current without any input from you. AUTO mode is remembered across page reloads.
 
@@ -59,9 +59,9 @@ Toggle between **20x** (~250M tokens/week) and **5x** (~62.5M tokens/week) in th
 | **daily equivalent** | Your current hourly burn scaled to a 24h day |
 | **resume-in** *(only when projected > 100%)* | How long to pause to get back on linear pace |
 
-### History chart
+### Daily burn chart
 
-The **PACE** section includes a chart showing actual usage vs. linear pace for the current cycle. Each dot is a logged data point; the blue line connects them and extends to your current slider position. The dashed line is the ideal linear pace.
+The **PACE** section includes a bar chart showing how much of your quota you burned on each day of the current cycle. Each bar's height is that day's usage consumption (% of weekly quota); the dashed line marks the daily pace target (1/7th of the week). Green/amber/red coloring matches the rest of the app. Today's bar is dimmed to mark it as in-progress; days not yet reached show empty.
 
 History snapshots are written to `localStorage` after you stop dragging the slider, at most one entry per 10 minutes when usage is unchanged. They auto-clear at the start of each new cycle.
 

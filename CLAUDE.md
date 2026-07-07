@@ -5,7 +5,7 @@ Single-file static HTML/CSS/JS app. No build step, no framework, no dependencies
 Deploy by dropping `index.html` anywhere — GitHub Pages, Netlify, local open.
 
 ## Architecture
-- All logic in one file: HTML + CSS custom properties + vanilla JS (~1050 lines as of v0.7)
+- All logic in one file: HTML + CSS custom properties + vanilla JS (~1280 lines as of v0.9)
 - Dark mode: `prefers-color-scheme` via CSS variables
 - State: `localStorage` (try/catch — silent fallback if unavailable)
 - History: `localStorage['cmuc_history']` = JSON array of `{ts, used, hrs}`, pruned to 500 entries and cycle-bounded
@@ -25,10 +25,11 @@ Deploy by dropping `index.html` anywhere — GitHub Pages, Netlify, local open.
 | `tzOffsetMin(date, tz)` | Returns minutes offset of an IANA zone at a given UTC instant. Formats to zone parts, reconstructs as UTC, takes diff. DST-correct by construction. |
 | `getAutoHours()` | Hours elapsed since last reset from system clock |
 | `getResetHrs()` | Hours until next reset |
-| `update()` | Master render — reads sliders/settings, recomputes all metrics, updates DOM, logs history, redraws sparkline |
+| `update()` | Master render — reads sliders/settings, recomputes all metrics, updates DOM, logs history, redraws daily burn bars |
 | `logUsage(used, hrs)` | Appends to history if `used` changed or >10min since last entry. While dragging, throttled to one log per 300ms (`DRAG_LOG_THROTTLE_MS`) instead of skipped entirely — a fast drag still leaves real intermediate points. Prunes cross-cycle entries. |
 | `recentBurn(hoursBack, TOK)` | MTok/hr computed from history delta over last N hours. Returns null if <2 entries or <0.05h span. |
-| `renderSparkline()` | Draws inline SVG: dotted linear pace line + solid blue actual usage curve. Uses `createElementNS` (no innerHTML). |
+| `dailyUsageBuckets()` | Buckets history into one delta-usage% per day-of-cycle via `usageAtTs()` boundary lookups. usage% is exactly 0 at cycle start and monotonic within a cycle, so each bucket is just (usage at day-end − usage at day-start) off the nearest logged point — no curve fitting. A bucket with no sample at-or-before its boundary reports `hasData: false` rather than assuming 0. |
+| `renderDayBars()` | Renders `dailyUsageBuckets()` as CSS bars (`createElement`, no SVG) — one column per day, height scaled to 2x daily budget, colored via `colorVarFor()`, dashed pace-reference line at the 1x-budget height. Replaced the old SVG sparkline (dual-axis, Catmull-Rom smoothing) in v0.9 — that approach never rendered cleanly at the card's small size; day-bars have no coordinate-transform math to get wrong. |
 | `rollingSet(id, val)` | Animated number transition via rAF, cubic-out 350ms |
 | `animateSlider(target)` | Smooth slider thumb animation, cubic-out 900ms |
 | `applyPlanBtn()` | Applies correct color to 20x/5x toggle |

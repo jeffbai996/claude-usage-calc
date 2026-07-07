@@ -113,13 +113,20 @@
   .stepper-btn:active { transform: scale(0.9); }
   .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
 
-  /* Sparkline inside pace card */
-  .sparkline-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
-  .sparkline-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .sparkline-hdr .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
-  .sparkline-hdr .sub { font-size: 10px; color: var(--text-secondary); font-style: italic; }
-  .sparkline-svg { display: block; width: 100%; height: auto; aspect-ratio: 240 / 90; }
-  .sparkline-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 28px 0; }
+  /* Daily burn bars inside pace card */
+  .daybars-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
+  .daybars-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .daybars-hdr .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+  .daybars-hdr .sub { font-size: 10px; color: var(--text-secondary); font-style: italic; }
+  .daybars { display: flex; align-items: flex-end; gap: 6px; height: 54px; position: relative; }
+  .daybars .pace-ref { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(140,140,140,.5); pointer-events: none; }
+  .daybar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+  .daybar-track { width: 100%; height: 100%; display: flex; align-items: flex-end; border-radius: 3px; overflow: hidden; background: var(--bg-secondary); }
+  .daybar-fill { width: 100%; min-height: 0; border-radius: 3px 3px 0 0; transition: height .3s ease, opacity .2s; }
+  .daybar-fill.today { opacity: .72; }
+  .daybar-lbl { font-size: 9px; color: var(--text-secondary); margin-top: 4px; }
+  .daybar-lbl.active { color: var(--text-primary); font-weight: 600; }
+  .daybars-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 18px 0; }
 
   /* Burn split card */
   .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
@@ -229,7 +236,7 @@
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.8</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.9</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
@@ -309,13 +316,13 @@
   <div class="bar-bg"><div class="bar-fill" id="bar-time" style="background:rgba(180,180,180,.45)"></div></div>
   <div class="delta-line" id="delta-line"></div>
 
-  <div class="sparkline-wrap">
-    <div class="sparkline-hdr">
-      <span class="lbl">history</span>
-      <span class="sub" id="spark-sub">actual vs linear pace</span>
+  <div class="daybars-wrap">
+    <div class="daybars-hdr">
+      <span class="lbl">daily burn</span>
+      <span class="sub">bar = day's usage · line = daily pace</span>
     </div>
-    <svg class="sparkline-svg" id="spark" viewBox="0 0 240 90" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div class="sparkline-empty" id="spark-empty" style="display:none">Move the usage slider to start tracking history.</div>
+    <div class="daybars" id="daybars"></div>
+    <div class="daybars-empty" id="daybars-empty" style="display:none">Move the usage slider to start tracking daily burn.</div>
   </div>
 </div>
 
@@ -448,7 +455,6 @@
 
 <script>
 const CYCLE = 168;
-const SVG_NS = 'http://www.w3.org/2000/svg';
 const DEFAULT_SETTINGS = {
   resetDay: 4,        // 0=Sun..6=Sat, 4=Thu
   resetHour: 12,      // 0-23 in resetTz
@@ -661,7 +667,7 @@ function logUsage(used, hrs) {
 function clearHistoryNow() {
   try { localStorage.removeItem('cmuc_history'); } catch(e) {}
   updateHistCount();
-  renderSparkline();
+  renderDayBars();
 }
 function recentBurn(hoursBack, TOK) {
   if (!settings.historyEnabled) return null;
@@ -679,181 +685,101 @@ function recentBurn(hoursBack, TOK) {
   const dUsed = b.used - a.used;
   return (TOK * dUsed / 100) / dtHr;
 }
-function setSparkEmpty(msg) {
-  const svg = document.getElementById('spark');
-  const empty = document.getElementById('spark-empty');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-  svg.style.display = 'none';
-  empty.style.display = 'block';
-  empty.textContent = msg;
-}
-function makeSvgEl(tag, attrs) {
-  const el = document.createElementNS(SVG_NS, tag);
-  for (const k in attrs) el.setAttribute(k, attrs[k]);
-  return el;
-}
-function makeSvgPath(d, stroke, dash, width) {
-  const attrs = {
-    d: d, stroke: stroke, 'stroke-width': width || (dash ? '0.8' : '1.5'),
-    fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-  };
-  if (dash) attrs['stroke-dasharray'] = dash;
-  return makeSvgEl('path', attrs);
-}
-function makeSvgText(x, y, txt, anchor, fill) {
-  const t = makeSvgEl('text', {
-    x: x, y: y, 'font-size': '4.5', 'font-family': 'inherit',
-    fill: fill || 'rgba(130,130,130,0.75)', 'text-anchor': anchor || 'middle'
-  });
-  t.textContent = txt;
-  return t;
-}
-// Build a smoothed path through {x,y} points using Catmull-Rom → cubic Bézier.
-// Control-point Y is clamped to each segment's endpoint range so monotonic data
-// (cumulative usage) never overshoots into visible wiggles.
-function smoothPath(pts) {
-  if (pts.length < 2) return '';
-  if (pts.length === 2) {
-    return 'M ' + pts[0].x.toFixed(2) + ' ' + pts[0].y.toFixed(2) +
-           ' L ' + pts[1].x.toFixed(2) + ' ' + pts[1].y.toFixed(2);
+// Bucket history into one delta-usage% value per day-of-cycle. Correct by
+// construction: usage% is monotonic within a cycle and is exactly 0 at
+// cycleStart, so each bucket is just (usage at day-end − usage at day-start)
+// read off the nearest logged point at-or-before each boundary. No coordinate
+// transforms, no curve fitting — the old SVG sparkline's bug surface.
+function usageAtTs(pts, cycleStart, ts) {
+  if (ts <= cycleStart) return 0;
+  let v = null;
+  for (let i = 0; i < pts.length; i++) {
+    if (pts[i].ts <= ts) v = pts[i].used; else break;
   }
-  let d = 'M ' + pts[0].x.toFixed(2) + ' ' + pts[0].y.toFixed(2);
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || pts[i + 1];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    let cp1y = p1.y + (p2.y - p0.y) / 6;
-    let cp2y = p2.y - (p3.y - p1.y) / 6;
-    const ymin = Math.min(p1.y, p2.y), ymax = Math.max(p1.y, p2.y);
-    cp1y = Math.max(ymin, Math.min(ymax, cp1y));
-    cp2y = Math.max(ymin, Math.min(ymax, cp2y));
-    d += ' C ' + cp1x.toFixed(2) + ' ' + cp1y.toFixed(2) + ' ' +
-         cp2x.toFixed(2) + ' ' + cp2y.toFixed(2) + ' ' +
-         p2.x.toFixed(2) + ' ' + p2.y.toFixed(2);
-  }
-  return d;
+  return v; // null = no sample at or before ts yet (unknown, not zero)
 }
-function renderSparkline() {
-  if (!settings.historyEnabled) { setSparkEmpty('History tracking disabled.'); return; }
-  const arr = pruneHistory(loadHistory());
-  if (arr.length < 2) { setSparkEmpty('Move the usage slider to start tracking history.'); return; }
+function dailyUsageBuckets() {
+  const cycleStart = getCycleStartDate().getTime();
+  const cycleEnd = cycleStart + CYCLE * 3600000;
+  const nowTs = Math.min(Date.now(), cycleEnd);
+  const currentUsed = +document.getElementById('used').value;
 
-  const svg = document.getElementById('spark');
-  const empty = document.getElementById('spark-empty');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-  svg.style.display = 'block';
+  const pts = pruneHistory(loadHistory()).slice();
+  const last = pts[pts.length - 1];
+  if (!last || last.ts < nowTs) pts.push({ ts: nowTs, used: currentUsed });
+
+  const dayMs = 24 * 3600000;
+  const nowDay = Math.min(6, Math.floor((nowTs - cycleStart) / dayMs));
+  const buckets = [];
+  for (let d = 0; d < 7; d++) {
+    const startTs = cycleStart + d * dayMs;
+    if (startTs > nowTs) { buckets.push({ day: d, hasData: false }); continue; }
+    const endTs = Math.min(startTs + dayMs, nowTs);
+    const startVal = usageAtTs(pts, cycleStart, startTs);
+    const endVal = usageAtTs(pts, cycleStart, endTs);
+    if (startVal === null || endVal === null) { buckets.push({ day: d, hasData: false }); continue; }
+    buckets.push({ day: d, hasData: true, delta: Math.max(0, endVal - startVal), isToday: d === nowDay });
+  }
+  return buckets;
+}
+function colorVarFor(v, lo, hi) {
+  const c = cls(v, lo, hi);
+  return c === 'success' ? 'var(--text-success)' : c === 'warning' ? 'var(--text-warning)' : 'var(--text-danger)';
+}
+function renderDayBars() {
+  const wrap = document.getElementById('daybars');
+  const empty = document.getElementById('daybars-empty');
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+  if (!settings.historyEnabled) {
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'History tracking disabled.';
+    return;
+  }
+  const buckets = dailyUsageBuckets();
+  if (!buckets.some(function(b) { return b.hasData; })) {
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'Move the usage slider to start tracking daily burn.';
+    return;
+  }
+  wrap.style.display = 'flex';
   empty.style.display = 'none';
 
-  // Layout: left pad for %-axis labels, right pad for MTok labels, bottom for time labels
-  const VW = 240, VH = 90;
-  const L = 22, R = 28, T = 4, B = 14;
-  const CW = VW - L - R, CH = VH - T - B; // chart inner area
+  const budgetPerDay = 100 / 7;
+  const scaleMax = budgetPerDay * 2; // bar reaches full height at 2x daily budget
 
-  const cycleStart = getCycleStartDate().getTime();
-  const cycleEndMs = cycleStart + CYCLE * 3600000;
-  const TOK = settings['tokens' + planMode] || DEFAULT_SETTINGS['tokens' + planMode];
+  const ref = document.createElement('div');
+  ref.className = 'pace-ref';
+  ref.style.bottom = Math.min(100, (budgetPerDay / scaleMax) * 100).toFixed(1) + '%';
+  wrap.appendChild(ref);
 
-  const xOf = function(ts) {
-    const h = Math.max(0, Math.min(CYCLE, (ts - cycleStart) / 3600000));
-    return L + (h / CYCLE) * CW;
-  };
-  const yOf = function(pct) {
-    return T + CH - (Math.max(0, Math.min(100, pct)) / 100) * CH;
-  };
-
-  const PCT_CLR  = 'rgba(85,155,220,0.75)';   // blue-tinted — matches the usage bar
-  const TOK_CLR  = 'rgba(160,140,110,0.75)';  // warm amber — token budget feel
-  const TIME_CLR = 'rgba(120,120,120,0.65)';  // neutral gray for time axis
-
-  // Gridlines at 25 / 50 / 75 %
-  [25, 50, 75].forEach(function(pct) {
-    const y = yOf(pct).toFixed(1);
-    svg.appendChild(makeSvgPath(
-      'M ' + L + ' ' + y + ' L ' + (L + CW) + ' ' + y,
-      'rgba(120,120,120,0.18)', '2 2', '0.7'
-    ));
-    svg.appendChild(makeSvgText(L - 3, (+y + 2).toFixed(1), pct + '%', 'end', PCT_CLR));
-    const tok = (TOK * pct / 100).toFixed(0);
-    svg.appendChild(makeSvgText(L + CW + 3, (+y + 2).toFixed(1), tok + 'M', 'start', TOK_CLR));
-  });
-
-  // 0% and 100% axis ticks
-  svg.appendChild(makeSvgText(L - 3, (T + CH + 2).toFixed(1), '0%', 'end', PCT_CLR));
-  svg.appendChild(makeSvgText(L + CW + 3, (T + CH + 2).toFixed(1), '0M', 'start', TOK_CLR));
-  svg.appendChild(makeSvgText(L - 3, (T + 2).toFixed(1), '100%', 'end', PCT_CLR));
-  svg.appendChild(makeSvgText(L + CW + 3, (T + 2).toFixed(1), TOK + 'M', 'start', TOK_CLR));
-
-  // Chart border
-  svg.appendChild(makeSvgPath(
-    'M ' + L + ' ' + T + ' L ' + L + ' ' + (T + CH) + ' L ' + (L + CW) + ' ' + (T + CH),
-    'rgba(120,120,120,0.3)', null, '0.7'
-  ));
-
-  // Time labels along bottom
-  const timeTicks = [0, 24, 48, 72, 96, 120, 144, 168];
-  timeTicks.forEach(function(h) {
-    const x = (L + (h / CYCLE) * CW).toFixed(1);
-    const yLine = T + CH;
-    svg.appendChild(makeSvgPath(
-      'M ' + x + ' ' + yLine + ' L ' + x + ' ' + (yLine + 2),
-      'rgba(120,120,120,0.4)', null, '0.7'
-    ));
-    svg.appendChild(makeSvgText(x, (yLine + 7).toFixed(1), h + 'h', 'middle', TIME_CLR));
-  });
-
-  // Dashed linear-pace line
-  svg.appendChild(makeSvgPath(
-    'M ' + L + ' ' + (T + CH) + ' L ' + (L + CW) + ' ' + T,
-    'rgba(140,140,140,0.5)', '3 3', '1'
-  ));
-
-  // Build curve vertices. logUsage() re-records the same usage value every
-  // ~10min, producing long flat runs (and near-vertical steps when it finally
-  // changes) — a jagged staircase. Collapse each run to its first occurrence
-  // (the transition point) so we connect the points where usage actually moved.
-  const currentUsed = +document.getElementById('used').value;
-  const nowTs = Math.min(Date.now(), cycleEndMs);
-  const pts = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (i === 0 || arr[i].used !== arr[i - 1].used) {
-      pts.push({ x: xOf(arr[i].ts), y: yOf(arr[i].used) });
+  buckets.forEach(function(b) {
+    const col = document.createElement('div');
+    col.className = 'daybar-col';
+    const track = document.createElement('div');
+    track.className = 'daybar-track';
+    const fill = document.createElement('div');
+    if (b.hasData) {
+      fill.className = 'daybar-fill' + (b.isToday ? ' today' : '');
+      fill.style.height = Math.min(100, (b.delta / scaleMax) * 100).toFixed(1) + '%';
+      fill.style.background = colorVarFor(b.delta, budgetPerDay, budgetPerDay * 1.5);
+      col.title = DAYS_LONG[(settings.resetDay + b.day) % 7] + ': ' + b.delta.toFixed(1) + '% used' +
+        (b.isToday ? ' (so far today)' : '');
+    } else {
+      fill.className = 'daybar-fill';
+      fill.style.height = '0%';
+      col.title = 'No data';
     }
-  }
-  // Always anchor the live endpoint at the current slider value so the trailing
-  // segment reflects where usage actually is right now.
-  const liveX = xOf(nowTs), liveY = yOf(currentUsed);
-  const lastV = pts[pts.length - 1];
-  if (!lastV || Math.abs(lastV.x - liveX) > 0.4 || Math.abs(lastV.y - liveY) > 0.4) {
-    pts.push({ x: liveX, y: liveY });
-  }
-
-  // Smoothed actual-usage curve through the transition vertices.
-  svg.appendChild(makeSvgPath(smoothPath(pts), 'var(--blue)', null, '1.5'));
-
-  // Dots at transition vertices (skip the final live point — it gets its own
-  // larger dot below), spaced to avoid clutter when transitions cluster.
-  let lastDotX = -Infinity;
-  for (let i = 0; i < pts.length - 1; i++) {
-    if (pts[i].x - lastDotX >= 6) {
-      svg.appendChild(makeSvgEl('circle', {
-        cx: pts[i].x.toFixed(2), cy: pts[i].y.toFixed(2),
-        r: '1.5', fill: 'var(--blue)', opacity: '0.55'
-      }));
-      lastDotX = pts[i].x;
-    }
-  }
-
-  // Current-position dot at the actual slider value, not the last logged value
-  const dotX = liveX;
-  const dotY = liveY;
-  const dot = makeSvgEl('circle', {
-    cx: dotX.toFixed(2), cy: dotY.toFixed(2), r: '2.5',
-    fill: 'var(--blue)', stroke: 'var(--bg)', 'stroke-width': '1'
+    track.appendChild(fill);
+    col.appendChild(track);
+    const lbl = document.createElement('div');
+    lbl.className = 'daybar-lbl' + (b.isToday ? ' active' : '');
+    lbl.textContent = DAY_MARKS_SHORT[(settings.resetDay + b.day) % 7];
+    col.appendChild(lbl);
+    wrap.appendChild(col);
   });
-  svg.appendChild(dot);
 }
 
 // ---------- State (used/hrs/plan/auto) ----------
@@ -1211,7 +1137,7 @@ function update() {
   hint.style.fontWeight = autoMode ? '700' : '400';
 
   logUsage(used, hrs);
-  renderSparkline();
+  renderDayBars();
   maybeUpdateMeta();
 
   _lastSnapshot = { TOK: TOK, used: used, hrs: hrs, pctTime: pctTime, proj: proj, surplus: surplus, burnPerHr: burnPerHr };
