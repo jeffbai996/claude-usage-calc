@@ -256,6 +256,14 @@
     <span class="val" id="used-out">13%</span>
   </div>
   <div id="ext-snap-hint" class="ext-snap-hint" style="display:none"></div>
+  <!-- Fable mode: same maths, measured against the per-model Fable quota
+       instead of the all-model weekly one. Only shown once a live reading has
+       actually reported a fable window (Jeff 2026-08-02). -->
+  <div class="row-ctrl" id="fable-row" style="display:none; margin:-2px 0 6px">
+    <label>window</label>
+    <button type="button" class="drawer-btn" id="fable-toggle"
+            style="flex:0 0 auto; padding:3px 10px; font-size:11px;">weekly (all models)</button>
+  </div>
   <div class="row-ctrl" style="margin-bottom:3px">
     <label>hours elapsed</label>
     <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
@@ -1255,6 +1263,71 @@ function loadExtensionSnap(snap) {
     return true;
   } catch(e) { return false; }
 }
+// ---------- Live endpoint (optional) ----------
+// This page has no backend and carries nobody's real numbers. If you run your
+// own service that can report plan usage, put its URL in localStorage under
+// `cmuc_live_url` and the sliders below become automatic. When no URL is set —
+// or the host is unreachable, which is the default for everyone — nothing
+// happens and the manual sliders stay authoritative.
+//
+// Expected JSON: { ok, plan: "20x"|"5x", capturedAt,
+//                  weeklyAll: { pct, resetsAt }, fable?: { pct, resetsAt } }
+const LIVE_KEY = 'cmuc_live_url';
+let liveMode = false;          // true once a fetch has succeeded
+let fableMode = false;         // measure against the Fable window instead
+try { fableMode = localStorage.getItem('cmuc_fable') === '1'; } catch(e) {}
+
+function liveUrl() {
+  try { return localStorage.getItem(LIVE_KEY) || ''; } catch(e) { return ''; }
+}
+
+// Which window drives the maths. Fable mode swaps in the per-model quota so
+// "am I on pace" answers for Fable specifically (Jeff 2026-08-02).
+function pickWindow(snap) {
+  if (fableMode && snap.fable && typeof snap.fable.pct === 'number') return snap.fable;
+  return snap.weeklyAll;
+}
+
+// hours-elapsed is DERIVED now, not dragged: the API hands us the exact reset
+// instant, and the cycle is a known 168h, so elapsed = 168 - hoursUntilReset.
+function hoursElapsedFrom(resetsAt) {
+  const t = Date.parse(resetsAt);
+  if (!isFinite(t)) return null;
+  const untilH = (t - Date.now()) / 3600000;
+  const elapsed = 168 - untilH;
+  return Math.max(0, Math.min(168, elapsed));
+}
+
+async function pollLive() {
+  const url = liveUrl();
+  if (!url) return false;
+  let snap;
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return false;
+    snap = await res.json();
+  } catch(e) { return false; }
+  if (!snap || !snap.ok) return false;
+
+  const win = pickWindow(snap);
+  if (!win || typeof win.pct !== 'number') return false;
+
+  document.getElementById('used').value = Math.round(win.pct);
+  const el = hoursElapsedFrom(win.resetsAt);
+  if (el !== null) document.getElementById('hours').value = el.toFixed(1);
+  if (snap.plan === '20x' || snap.plan === '5x') {
+    planMode = snap.plan;
+    try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
+    applyPlanBtn();
+  }
+  liveMode = true;
+  _extSnapAt = snap.capturedAt || Date.now();
+  updateExtHint();
+  saveState();
+  update();
+  return true;
+}
+
 window.addEventListener('cmuc-extension-snap', function(ev) {
   if (loadExtensionSnap(ev.detail)) {
     applyPlanBtn();
@@ -1262,10 +1335,35 @@ window.addEventListener('cmuc-extension-snap', function(ev) {
   }
 });
 
+function applyFableBtn(hasFable) {
+  const row = document.getElementById('fable-row');
+  const btn = document.getElementById('fable-toggle');
+  if (!row || !btn) return;
+  row.style.display = hasFable ? '' : 'none';
+  btn.textContent = fableMode ? 'Fable only' : 'weekly (all models)';
+  btn.style.color = fableMode ? 'var(--blue)' : '';
+}
+
+document.addEventListener('click', function(ev) {
+  if (!ev.target || ev.target.id !== 'fable-toggle') return;
+  fableMode = !fableMode;
+  try { localStorage.setItem('cmuc_fable', fableMode ? '1' : '0'); } catch(e) {}
+  applyFableBtn(true);
+  pollLive();
+});
+
 // ---------- Boot ----------
 loadSettings();
 const storedAuto = loadState();
 loadExtensionSnap();
+// Live poll: one immediately, then every 2 min. The EVEN spacing is what makes
+// the history graph smooth — v0.9 dropped the sparkline because hand-dragged
+// points arrived at random intervals and drew a staircase (Jeff 2026-08-02).
+pollLive().then(function(ok) {
+  if (!ok) return;
+  applyFableBtn(true);
+  setInterval(pollLive, 120000);
+});
 const hashWantAuto = applyHash();
 populateDrawer();
 applyPlanBtn();
