@@ -256,14 +256,6 @@
     <span class="val" id="used-out">13%</span>
   </div>
   <div id="ext-snap-hint" class="ext-snap-hint" style="display:none"></div>
-  <!-- Fable mode: same maths, measured against the per-model Fable quota
-       instead of the all-model weekly one. Only shown once a live reading has
-       actually reported a fable window (Jeff 2026-08-02). -->
-  <div class="row-ctrl" id="fable-row" style="display:none; margin:-2px 0 6px">
-    <label>window</label>
-    <button type="button" class="drawer-btn" id="fable-toggle"
-            style="flex:0 0 auto; padding:3px 10px; font-size:11px;">weekly (all models)</button>
-  </div>
   <div class="row-ctrl" style="margin-bottom:3px">
     <label>hours elapsed</label>
     <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
@@ -278,6 +270,10 @@
     <div style="display:flex;align-items:center;gap:8px">
       <span class="auto-lbl">time sync</span>
       <button class="toggle-btn" id="auto-btn" onclick="toggleAuto()">MAN</button>
+      <!-- Measures against the per-model Fable quota instead of the all-model
+           weekly one. Only meaningful with a live feed, so it disables itself
+           without one (Jeff 2026-08-02). -->
+      <button class="toggle-btn" id="fable-btn" onclick="toggleFable()" disabled>FABLE</button>
       <span class="auto-lbl" id="auto-hint"></span>
     </div>
     <div class="stepper-wrap">
@@ -888,26 +884,54 @@ function togglePlan() {
   saveState();
   update();
 }
+// AUTO drives BOTH sliders (Jeff 2026-08-02: "toggle both auto-time and
+// auto-percentage at the same time"). With a live endpoint configured it is the
+// source of truth for the percentage AND the elapsed time — the reset instant
+// comes back with the reading, so hours are derived rather than guessed. With
+// no endpoint (every public visitor) it degrades to the original clock-only
+// behaviour and the usage slider stays manual.
+function applyAutoUI() {
+  const btn = document.getElementById('auto-btn');
+  const hrs = document.getElementById('hours');
+  const usd = document.getElementById('used');
+  btn.classList.toggle('on', autoMode);
+  btn.textContent = autoMode ? 'AUTO' : 'MAN';
+  hrs.disabled = autoMode;
+  // only lock the usage slider when we actually have a live feed for it
+  usd.disabled = autoMode && !!liveUrl();
+  const fb = document.getElementById('fable-btn');
+  if (fb) {
+    fb.disabled = !autoMode || !liveUrl();
+    fb.classList.toggle('on', fableMode);
+  }
+}
+
+function autoRefresh() {
+  if (liveUrl()) { pollLive(); return; }   // percentage + time from the endpoint
+  animateSlider(getAutoHours());           // no endpoint: clock only
+  update();
+}
+
 function toggleAuto() {
   autoMode = !autoMode;
   try { localStorage.setItem('cmuc_auto', autoMode ? '1' : '0'); } catch(e) {}
-  const btn = document.getElementById('auto-btn');
-  const sl = document.getElementById('hours');
-  btn.classList.toggle('on', autoMode);
-  btn.textContent = autoMode ? 'AUTO' : 'MAN';
-  sl.disabled = autoMode;
+  applyAutoUI();
+  clearInterval(autoTick);
   if (autoMode) {
-    animateSlider(getAutoHours());
-    update();
-    autoTick = setInterval(function() {
-      animateSlider(getAutoHours());
-      update();
-    }, 30000);
+    autoRefresh();
+    autoTick = setInterval(autoRefresh, 30000);
   } else {
-    clearInterval(autoTick);
     update();
   }
   syncUrlHash();
+}
+
+function toggleFable() {
+  if (!autoMode || !liveUrl()) return;
+  fableMode = !fableMode;
+  try { localStorage.setItem('cmuc_fable', fableMode ? '1' : '0'); } catch(e) {}
+  applyAutoUI();
+  pollLive();
 }
 
 function cls(v, lo, hi) { return v <= lo ? 'success' : v <= hi ? 'warning' : 'danger'; }
@@ -1312,6 +1336,7 @@ async function pollLive() {
   const win = pickWindow(snap);
   if (!win || typeof win.pct !== 'number') return false;
 
+  if (!autoMode) { liveMode = true; return true; }   // primed, but MAN wins
   document.getElementById('used').value = Math.round(win.pct);
   const el = hoursElapsedFrom(win.resetsAt);
   if (el !== null) document.getElementById('hours').value = el.toFixed(1);
@@ -1335,23 +1360,6 @@ window.addEventListener('cmuc-extension-snap', function(ev) {
   }
 });
 
-function applyFableBtn(hasFable) {
-  const row = document.getElementById('fable-row');
-  const btn = document.getElementById('fable-toggle');
-  if (!row || !btn) return;
-  row.style.display = hasFable ? '' : 'none';
-  btn.textContent = fableMode ? 'Fable only' : 'weekly (all models)';
-  btn.style.color = fableMode ? 'var(--blue)' : '';
-}
-
-document.addEventListener('click', function(ev) {
-  if (!ev.target || ev.target.id !== 'fable-toggle') return;
-  fableMode = !fableMode;
-  try { localStorage.setItem('cmuc_fable', fableMode ? '1' : '0'); } catch(e) {}
-  applyFableBtn(true);
-  pollLive();
-});
-
 // ---------- Boot ----------
 loadSettings();
 const storedAuto = loadState();
@@ -1359,11 +1367,9 @@ loadExtensionSnap();
 // Live poll: one immediately, then every 2 min. The EVEN spacing is what makes
 // the history graph smooth — v0.9 dropped the sparkline because hand-dragged
 // points arrived at random intervals and drew a staircase (Jeff 2026-08-02).
-pollLive().then(function(ok) {
-  if (!ok) return;
-  applyFableBtn(true);
-  setInterval(pollLive, 120000);
-});
+// One poll at boot so AUTO has data the moment it is switched on.
+pollLive().then(function(){ applyAutoUI(); });
+applyAutoUI();
 const hashWantAuto = applyHash();
 populateDrawer();
 applyPlanBtn();
