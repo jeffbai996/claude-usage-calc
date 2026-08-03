@@ -32,7 +32,7 @@
   .card.t-warning { background: var(--bg-warning); }
   .card.t-danger  { background: var(--bg-danger); }
   .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
-  .metric-val { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
+  .metric-val { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
   .metric-val.c-success { color: var(--text-success); }
   .metric-val.c-warning { color: var(--text-warning); }
   .metric-val.c-danger  { color: var(--text-danger); }
@@ -45,7 +45,7 @@
   .row-ctrl label { font-size: 12px; color: var(--text-secondary); min-width: 88px; }
   .row-ctrl input[type=range] { flex: 1; accent-color: var(--blue); }
   .row-ctrl input[type=range]:disabled { opacity: .35; }
-  .row-ctrl .val { font-size: 13px; font-weight: 700; min-width: 42px; text-align: right; color: var(--text-primary); }
+  .row-ctrl .val { font-size: 13px; font-weight: 500; min-width: 42px; text-align: right; color: var(--text-primary); }
   .day-marks { display: flex; justify-content: space-between; padding-left: 98px; padding-right: 54px; margin-top: 1px; margin-bottom: 10px; }
   .day-mark { font-size: 10px; color: var(--text-secondary); text-align: center; flex: 1; }
   .day-mark.active { color: var(--text-primary); font-weight: 800; }
@@ -103,7 +103,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--bg-secondary);
-    color: var(--text-secondary); font-size: 17px; font-weight: 600;
+    color: var(--text-secondary); font-size: 17px; font-weight: 400;
     cursor: pointer; user-select: none; line-height: 1;
     transition: background .12s, color .12s, border-color .12s;
     touch-action: manipulation;
@@ -131,7 +131,7 @@
   .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
   .burn-split .col { flex: 1; }
   .burn-split .col.second { border-left: 0.5px solid var(--border); padding-left: 10px; }
-  .burn-split .bval { font-size: 18px; font-weight: 700; line-height: 1.1; transition: color .2s; }
+  .burn-split .bval { font-size: 18px; font-weight: 500; line-height: 1.1; transition: color .2s; }
   .burn-split .bval.c-success { color: var(--text-success); }
   .burn-split .bval.c-warning { color: var(--text-warning); }
   .burn-split .bval.c-danger  { color: var(--text-danger); }
@@ -254,17 +254,31 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 }
 /* MAN orange / AUTO green lifted from the operator cockpit so the two surfaces
    read the same; FABLE violet — distinct from both and from the link blue. */
+/* Segmented MAN|AUTO — both labels visible, one thumb slides and crossfades
+   orange -> green. Ported from the operator cockpit so the two surfaces match.
+   A single label-swapping button gave no clue what pressing it would do. */
+.seg { position: relative; display: inline-flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  background: var(--bg); isolation: isolate; }
+.seg-thumb { position: absolute; inset: 0 auto 0 0; width: 50%; z-index: 0;
+  border-radius: 5px; background: #f0883e;
+  transition: transform .3s cubic-bezier(.5,1.2,.4,1), background-color .26s ease; }
+.seg[data-mode="auto"] .seg-thumb { transform: translateX(100%); background: #3fb950; }
+.seg-btn { position: relative; z-index: 1; background: none; border: none; cursor: pointer;
+  font: 700 0.5rem/1 var(--num-font); letter-spacing: .04em;
+  padding: 3px 6px; color: var(--text-secondary); transition: color .24s ease; }
+.seg[data-mode="man"]  .seg-btn[data-mode="man"]  { color: #2a1402; }
+.seg[data-mode="auto"] .seg-btn[data-mode="auto"] { color: #062611; }
+
 .toggle-btn {
-  font: 800 0.5rem/1 var(--num-font); letter-spacing: .03em;
-  padding: 2.5px 5px; border-radius: 5px; min-width: 0;
-  border: 1px solid var(--border); cursor: pointer;
+  font: 700 0.5rem/1 var(--num-font); letter-spacing: .04em;
+  padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text-secondary); cursor: pointer;
   transition: background .22s ease, color .22s ease, border-color .22s ease;
 }
-#auto-btn { background: #f0883e; border-color: #f0883e; color: #2a1402; }
-#auto-btn.on { background: #3fb950; border-color: #3fb950; color: #062611; }
-#fable-btn { background: var(--bg); color: var(--text-secondary); }
 #fable-btn.on { background: #a371f7; border-color: #a371f7; color: #1a0b2e; }
-#fable-btn:disabled { opacity: .38; cursor: default; }
+#fable-btn:disabled { opacity: .35; cursor: default; }
 </style>
 </head>
 <body>
@@ -304,7 +318,11 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
   <div class="auto-row" style="justify-content:space-between">
     <div style="display:flex;align-items:center;gap:8px">
       <span class="auto-lbl">time sync</span>
-      <button class="toggle-btn" id="auto-btn" onclick="toggleAuto()">MAN</button>
+      <span class="seg" id="mode-seg" data-mode="man">
+        <span class="seg-thumb"></span>
+        <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
+        <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
+      </span>
       <!-- Measures against the per-model Fable quota instead of the all-model
            weekly one. Only meaningful with a live feed, so it disables itself
            without one (Jeff 2026-08-02). -->
@@ -926,11 +944,10 @@ function togglePlan() {
 // no endpoint (every public visitor) it degrades to the original clock-only
 // behaviour and the usage slider stays manual.
 function applyAutoUI() {
-  const btn = document.getElementById('auto-btn');
+  const seg = document.getElementById('mode-seg');
   const hrs = document.getElementById('hours');
   const usd = document.getElementById('used');
-  btn.classList.toggle('on', autoMode);
-  btn.textContent = autoMode ? 'AUTO' : 'MAN';
+  if (seg) seg.dataset.mode = autoMode ? 'auto' : 'man';
   hrs.disabled = autoMode;
   // only lock the usage slider when we actually have a live feed for it
   usd.disabled = autoMode && !!liveUrl();
@@ -945,6 +962,11 @@ function autoRefresh() {
   if (liveUrl()) { pollLive(); return; }   // percentage + time from the endpoint
   animateSlider(getAutoHours());           // no endpoint: clock only
   update();
+}
+
+function setAuto(want) {
+  if (autoMode === want) return;
+  toggleAuto();
 }
 
 function toggleAuto() {
