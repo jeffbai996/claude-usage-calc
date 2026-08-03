@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Max Usage Calculator</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg: #ffffff; --bg-secondary: #f5f5f3;
@@ -76,7 +75,7 @@
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
   .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; padding-left: 100px; margin: -4px 0 5px; }
   .toggle-btn {
-    font-family: "Google Sans", "Anthropic Sans", -apple-system, sans-serif;
+    font-family: "Plus Jakarta Sans", "Anthropic Sans", -apple-system, sans-serif;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0;
@@ -231,12 +230,41 @@
     .g3 > :last-child { grid-column: 1 / -1; }
   }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Geist+Mono:wght@400..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Anthropic Sans if the viewer happens to have it, else Jakarta — which we
+     load properly from Google Fonts. No tokenised CDN link in a public repo. */
+  --ui-font: "Anthropic Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --num-font: "Plus Jakarta Sans", var(--ui-font);
+}
+body, button, input, select, textarea { font-family: var(--ui-font); }
+.val, .bnum, .day-mark, #used-out, #hours-out {
+  font-family: var(--num-font); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* MAN orange / AUTO green lifted from the operator cockpit so the two surfaces
+   read the same; FABLE violet — distinct from both and from the link blue. */
+.toggle-btn {
+  font: 700 0.55rem/1 var(--num-font); letter-spacing: .04em;
+  padding: 3px 7px; border-radius: 6px; min-width: 40px;
+  border: 1px solid var(--border); cursor: pointer;
+  transition: background .22s ease, color .22s ease, border-color .22s ease;
+}
+#auto-btn { background: #f0883e; border-color: #f0883e; color: #2a1402; }
+#auto-btn.on { background: #3fb950; border-color: #3fb950; color: #062611; }
+#fable-btn { background: var(--bg); color: var(--text-secondary); }
+#fable-btn.on { background: #a371f7; border-color: #a371f7; color: #1a0b2e; }
+#fable-btn:disabled { opacity: .38; cursor: default; }
+</style>
 </head>
 <body>
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v0.9</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v1.0</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
