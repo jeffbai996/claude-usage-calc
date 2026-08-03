@@ -32,7 +32,7 @@
   .card.t-warning { background: var(--bg-warning); }
   .card.t-danger  { background: var(--bg-danger); }
   .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
-  .metric-val { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
+  .metric-val { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
   .metric-val.c-success { color: var(--text-success); }
   .metric-val.c-warning { color: var(--text-warning); }
   .metric-val.c-danger  { color: var(--text-danger); }
@@ -45,17 +45,17 @@
   .row-ctrl label { font-size: 12px; color: var(--text-secondary); min-width: 88px; }
   .row-ctrl input[type=range] { flex: 1; accent-color: var(--blue); }
   .row-ctrl input[type=range]:disabled { opacity: .35; }
-  .row-ctrl .val { font-size: 13px; font-weight: 500; min-width: 42px; text-align: right; color: var(--text-primary); }
+  .row-ctrl .val { font-size: 13px; font-weight: 700; min-width: 42px; text-align: right; color: var(--text-primary); }
   .day-marks { display: flex; justify-content: space-between; padding-left: 98px; padding-right: 54px; margin-top: 1px; margin-bottom: 10px; }
   .day-mark { font-size: 10px; color: var(--text-secondary); text-align: center; flex: 1; }
-  .day-mark.active { color: var(--text-primary); font-weight: 600; }
-  .status-pill { font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; transition: background .2s, color .2s; }
+  .day-mark.active { color: var(--text-primary); font-weight: 800; }
+  .status-pill { font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; transition: background .2s, color .2s; }
   .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .section-head { font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+  .section-head { font-size: 10px; color: var(--text-secondary); font-weight: 800; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
   .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
   .hdr-title { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
   .disclaimer { font-size: 10px; color: var(--text-secondary); font-style: italic; margin-top: 8px; line-height: 1.6; }
-  h1 { font-size: 17px; font-weight: 500; color: var(--text-primary); }
+  h1 { font-size: 17px; font-weight: 700; color: var(--text-primary); }
   .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
   .title-row .right { display: flex; align-items: center; gap: 6px; }
   .reset-badge { font-size: 11px; color: var(--text-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
@@ -103,14 +103,14 @@
     display: inline-flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--bg-secondary);
-    color: var(--text-secondary); font-size: 17px; font-weight: 400;
+    color: var(--text-secondary); font-size: 17px; font-weight: 600;
     cursor: pointer; user-select: none; line-height: 1;
     transition: background .12s, color .12s, border-color .12s;
     touch-action: manipulation;
   }
   .stepper-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
   .stepper-btn:active { transform: scale(0.9); }
-  .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 600; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+  .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 800; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
 
   /* Daily burn bars inside pace card */
   .daybars-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
@@ -124,14 +124,14 @@
   .daybar-fill { width: 100%; min-height: 0; border-radius: 3px 3px 0 0; transition: height .3s ease, opacity .2s; }
   .daybar-fill.today { opacity: .72; }
   .daybar-lbl { font-size: 9px; color: var(--text-secondary); margin-top: 4px; }
-  .daybar-lbl.active { color: var(--text-primary); font-weight: 600; }
+  .daybar-lbl.active { color: var(--text-primary); font-weight: 800; }
   .daybars-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 18px 0; }
 
   /* Burn split card */
   .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
   .burn-split .col { flex: 1; }
   .burn-split .col.second { border-left: 0.5px solid var(--border); padding-left: 10px; }
-  .burn-split .bval { font-size: 18px; font-weight: 500; line-height: 1.1; transition: color .2s; }
+  .burn-split .bval { font-size: 18px; font-weight: 700; line-height: 1.1; transition: color .2s; }
   .burn-split .bval.c-success { color: var(--text-success); }
   .burn-split .bval.c-warning { color: var(--text-warning); }
   .burn-split .bval.c-danger  { color: var(--text-danger); }
@@ -162,7 +162,7 @@
     border-bottom: 0.5px solid var(--border); flex-shrink: 0;
   }
   .drawer h2 {
-    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    font-size: 15px; font-weight: 800; color: var(--text-primary);
     display: flex; justify-content: space-between; align-items: center; margin: 0;
   }
   .drawer-close-btn {
@@ -177,7 +177,7 @@
   .drawer-body { padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .drawer-section { background: var(--bg-secondary); border-radius: 10px; padding: 12px 14px; }
   .drawer-section h3 {
-    font-size: 10px; color: var(--text-secondary); font-weight: 600;
+    font-size: 10px; color: var(--text-secondary); font-weight: 800;
     letter-spacing: .07em; text-transform: uppercase;
     margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border);
   }
@@ -198,7 +198,7 @@
     line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border);
   }
   .drawer-btn {
-    padding: 8px 14px; font-size: 12px; font-weight: 500; border-radius: 8px;
+    padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;
     border: 0.5px solid var(--border); background: var(--bg); color: var(--text-primary);
     cursor: pointer; font-family: inherit; touch-action: manipulation;
     transition: background .12s, color .12s, border-color .12s;
@@ -234,11 +234,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Geist+Mono:wght@400..800&display=swap" rel="stylesheet">
 <style>
+@font-face {
+  /* Self-hosted (fonts/AnthropicSans.ttf) rather than the tokenised CDN link —
+     that tripped the secret scanner and can rotate. Variable weight 100-900, so
+     the weight bumps below actually render (Jeff 2026-08-02). */
+  font-family: "Anthropic Sans";
+  src: url("fonts/AnthropicSans.ttf") format("truetype");
+  font-style: normal; font-weight: 100 900; font-display: swap;
+}
 :root {
-  /* Anthropic Sans if the viewer happens to have it, else Jakarta — which we
-     load properly from Google Fonts. No tokenised CDN link in a public repo. */
   --ui-font: "Anthropic Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --num-font: "Plus Jakarta Sans", var(--ui-font);
+  /* figures ride Anthropic Sans too — Jakarta only as the fallback face. */
+  --num-font: "Anthropic Sans", "Plus Jakarta Sans", sans-serif;
 }
 body, button, input, select, textarea { font-family: var(--ui-font); }
 .val, .bnum, .day-mark, #used-out, #hours-out {
@@ -248,8 +255,8 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 /* MAN orange / AUTO green lifted from the operator cockpit so the two surfaces
    read the same; FABLE violet — distinct from both and from the link blue. */
 .toggle-btn {
-  font: 700 0.55rem/1 var(--num-font); letter-spacing: .04em;
-  padding: 3px 7px; border-radius: 6px; min-width: 40px;
+  font: 800 0.5rem/1 var(--num-font); letter-spacing: .03em;
+  padding: 2.5px 5px; border-radius: 5px; min-width: 0;
   border: 1px solid var(--border); cursor: pointer;
   transition: background .22s ease, color .22s ease, border-color .22s ease;
 }
@@ -264,7 +271,7 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:400;letter-spacing:.02em">v1.0</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.02em">v1.0</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
