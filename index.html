@@ -280,26 +280,23 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 #fable-btn.on { background: #a371f7; border-color: #a371f7; color: #1a0b2e; }
 #fable-btn:disabled { opacity: .35; cursor: default; }
 
-/* Live feed drives everything, so the manual apparatus is hidden: both
-   sliders, the MAN/AUTO switch, the +/- stepper, the plan toggle, and the
-   reset-cycle settings. The inputs stay in the DOM as the values the fetch
-   writes to and update() reads from. */
+/* Live feed drives everything, so the controls stay on screen but stop being
+   inputs: the feed owns these values and a drag would only fight it. Kept
+   visible rather than hidden so the numbers still read at a glance. */
 body.live-mode #used-row,
 body.live-mode #hours-row,
-body.live-mode .day-marks,
 body.live-mode .stepper-wrap,
 body.live-mode #plan-btn,
-body.live-mode #reset-cycle-section { display: none; }
-/* #time-sync-group carries an inline display:contents, so overriding it needs
-   the !important — the inline style wins on specificity otherwise. */
-body.live-mode #time-sync-group { display: none !important; }
-/* Nothing left in it but the live badge. */
-body.live-mode .controls-card { padding: 0; border: 0; background: none; }
-body.live-mode .auto-row { margin: 0; }
+body.live-mode #mode-seg { opacity: .55; pointer-events: none; }
 body.live-mode #live-plan { display: inline-block; }
-body.live-mode #disc-reset { display: none; }
 #live-plan { display: none; font-size: 11px; color: var(--text-secondary);
   font-weight: 700; letter-spacing: .04em; }
+
+/* FABLE sits next to the MAN/AUTO switch, so they share a height and the
+   switch is the one that should carry the weight (Jeff 2026-08-06). */
+.seg { min-height: 22px; }
+.seg-btn { font-size: 0.6rem; padding: 4px 11px; }
+#fable-btn { font-size: 0.46rem; padding: 2px 5px; min-height: 22px; }
 </style>
 </head>
 <body>
@@ -338,13 +335,11 @@ body.live-mode #disc-reset { display: none; }
   </div>
   <div class="auto-row" style="justify-content:space-between">
     <div style="display:flex;align-items:center;gap:8px">
-      <span id="time-sync-group" style="display:contents">
-        <span class="auto-lbl">time sync</span>
-        <span class="seg" id="mode-seg" data-mode="man">
-          <span class="seg-thumb"></span>
-          <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
-          <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
-        </span>
+      <span class="auto-lbl">time sync</span>
+      <span class="seg" id="mode-seg" data-mode="man">
+        <span class="seg-thumb"></span>
+        <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
+        <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
       </span>
       <span id="live-plan">—</span>
       <!-- Measures against the per-model Fable quota instead of the all-model
@@ -464,7 +459,7 @@ body.live-mode #disc-reset { display: none; }
     <div class="metric-sub">MTok / day</div>
   </div>
 </div>
-<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. <span id="disc-reset">Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</span></p>
+<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</p>
 
 </div>
 
@@ -1119,7 +1114,10 @@ function updateExtHint() {
   if (!_extSnapAt) { el.style.display = 'none'; return; }
   const ageSec = Math.floor((Date.now() - _extSnapAt) / 1000);
   const ageStr = ageSec < 60 ? 'just now' : Math.floor(ageSec / 60) + 'm ago';
-  el.textContent = (liveMode ? 'live · synced ' : 'via extension · synced ') + ageStr;
+  const src = liveMode
+    ? (fableStale ? 'live · no Fable window, showing all-model · synced ' : 'live · synced ')
+    : 'via extension · synced ';
+  el.textContent = src + ageStr;
   el.style.display = '';
 }
 function update() {
@@ -1416,8 +1414,19 @@ function liveUrl() {
 
 // Which window drives the maths. Fable mode swaps in the per-model quota so
 // "am I on pace" answers for Fable specifically (Jeff 2026-08-02).
+//
+// The fable block comes and goes: upstream reports it only when the account it
+// happens to read has a live Fable window, so a poll can arrive without one at
+// any time. Falling through to weeklyAll keeps the reading real — returning
+// nothing used to fail the whole poll, which dropped the page back onto the
+// configured (drifted) cycle and showed a wildly wrong reset with a flattering
+// amount of quota left (Jeff 2026-08-06).
+let fableStale = false;
 function pickWindow(snap) {
-  if (fableMode && snap.fable && typeof snap.fable.pct === 'number') return snap.fable;
+  if (fableMode) {
+    if (snap.fable && typeof snap.fable.pct === 'number') { fableStale = false; return snap.fable; }
+    fableStale = true;
+  }
   return snap.weeklyAll;
 }
 
