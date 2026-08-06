@@ -103,6 +103,24 @@ The extension only reads the usage percentage shown on claude.ai. It does not ma
 
 ---
 
+## Live feed (optional)
+
+Serve a `live.json` next to `index.html` and the calculator goes fully automatic: the usage percentage, the plan, and the reset instant all come from the feed, so every manual control is hidden and the reset cycle no longer needs configuring. Without one — the default for GitHub Pages — the fetch 404s and the manual sliders stay authoritative.
+
+```json
+{
+  "ok": true,
+  "plan": "20x",
+  "capturedAt": 1786019258210,
+  "weeklyAll": { "pct": 26.0, "resetsAt": "2026-08-11T22:59:59Z" },
+  "fable":     { "pct": 28.0, "resetsAt": "2026-08-11T23:00:00Z" }
+}
+```
+
+`weeklyAll` is required; `fable` is optional and enables the FABLE toggle, which measures against the per-model window instead. Set `localStorage.cmuc_live_url` to point at a feed on another origin. If the feed stops responding, the page falls back to clock-driven time sync rather than freezing on the last reading.
+
+---
+
 ## Deploying to GitHub Pages
 
 1. Fork or clone this repo

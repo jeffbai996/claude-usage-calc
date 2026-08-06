@@ -279,6 +279,27 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 }
 #fable-btn.on { background: #a371f7; border-color: #a371f7; color: #1a0b2e; }
 #fable-btn:disabled { opacity: .35; cursor: default; }
+
+/* Live feed drives everything, so the manual apparatus is hidden: both
+   sliders, the MAN/AUTO switch, the +/- stepper, the plan toggle, and the
+   reset-cycle settings. The inputs stay in the DOM as the values the fetch
+   writes to and update() reads from. */
+body.live-mode #used-row,
+body.live-mode #hours-row,
+body.live-mode .day-marks,
+body.live-mode .stepper-wrap,
+body.live-mode #plan-btn,
+body.live-mode #reset-cycle-section { display: none; }
+/* #time-sync-group carries an inline display:contents, so overriding it needs
+   the !important — the inline style wins on specificity otherwise. */
+body.live-mode #time-sync-group { display: none !important; }
+/* Nothing left in it but the live badge. */
+body.live-mode .controls-card { padding: 0; border: 0; background: none; }
+body.live-mode .auto-row { margin: 0; }
+body.live-mode #live-plan { display: inline-block; }
+body.live-mode #disc-reset { display: none; }
+#live-plan { display: none; font-size: 11px; color: var(--text-secondary);
+  font-weight: 700; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -299,13 +320,13 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
 </div>
 
 <div class="controls-card">
-  <div class="row-ctrl">
+  <div class="row-ctrl" id="used-row">
     <label>usage so far</label>
     <input type="range" min="0" max="100" value="13" step="1" id="used">
     <span class="val" id="used-out">13%</span>
   </div>
   <div id="ext-snap-hint" class="ext-snap-hint" style="display:none"></div>
-  <div class="row-ctrl" style="margin-bottom:3px">
+  <div class="row-ctrl" id="hours-row" style="margin-bottom:3px">
     <label>hours elapsed</label>
     <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
     <span class="val" id="hours-out">23.0h</span>
@@ -317,12 +338,15 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
   </div>
   <div class="auto-row" style="justify-content:space-between">
     <div style="display:flex;align-items:center;gap:8px">
-      <span class="auto-lbl">time sync</span>
-      <span class="seg" id="mode-seg" data-mode="man">
-        <span class="seg-thumb"></span>
-        <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
-        <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
+      <span id="time-sync-group" style="display:contents">
+        <span class="auto-lbl">time sync</span>
+        <span class="seg" id="mode-seg" data-mode="man">
+          <span class="seg-thumb"></span>
+          <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
+          <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
+        </span>
       </span>
+      <span id="live-plan">—</span>
       <!-- Measures against the per-model Fable quota instead of the all-model
            weekly one. Only meaningful with a live feed, so it disables itself
            without one (Jeff 2026-08-02). -->
@@ -440,7 +464,7 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
     <div class="metric-sub">MTok / day</div>
   </div>
 </div>
-<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</p>
+<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. <span id="disc-reset">Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</span></p>
 
 </div>
 
@@ -457,7 +481,7 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
   </div>
 
   <div class="drawer-body">
-    <div class="drawer-section">
+    <div class="drawer-section" id="reset-cycle-section">
       <h3>reset cycle</h3>
       <div class="drawer-row">
         <label for="s-day">day</label>
@@ -668,7 +692,14 @@ function getAutoHours() {
   const now = new Date();
   return Math.min(CYCLE, Math.max(0, (now - getCycleStartDate()) / 3600000));
 }
+// The live feed reports the exact reset instant, so when it is up that wins
+// over the configured day/hour/tz guess (which was drifting a whole cycle out).
+let liveResetsAt = null;
 function getResetHrs() {
+  if (liveMode && liveResetsAt) {
+    const t = Date.parse(liveResetsAt);
+    if (isFinite(t)) return Math.max(0, (t - Date.now()) / 3600000);
+  }
   const nextReset = new Date(getCycleStartDate().getTime() + CYCLE * 3600000);
   return Math.max(0, (nextReset - new Date()) / 3600000);
 }
@@ -798,7 +829,10 @@ function renderDayBars() {
   if (!buckets.some(function(b) { return b.hasData; })) {
     wrap.style.display = 'none';
     empty.style.display = 'block';
-    empty.textContent = 'Move the usage slider to start tracking daily burn.';
+    // No slider to move in live mode; the feed fills this in on its own.
+    empty.textContent = liveMode
+      ? 'Collecting daily burn from the live feed.'
+      : 'Move the usage slider to start tracking daily burn.';
     return;
   }
   wrap.style.display = 'flex';
@@ -925,6 +959,9 @@ function getDayMarkIdx(hrs) {
 function applyPlanBtn() {
   const btn = document.getElementById('plan-btn');
   btn.textContent = planMode;
+  // In live mode the toggle is hidden, so the plan still has to read somewhere.
+  const lp = document.getElementById('live-plan');
+  if (lp) lp.textContent = planMode;
   if (planMode === '20x') {
     btn.style.background = '#E8830A'; btn.style.borderColor = '#E8830A'; btn.style.color = '#fff';
   } else {
@@ -949,19 +986,29 @@ function applyAutoUI() {
   const usd = document.getElementById('used');
   if (seg) seg.dataset.mode = autoMode ? 'auto' : 'man';
   hrs.disabled = autoMode;
-  // only lock the usage slider when we actually have a live feed for it
-  usd.disabled = autoMode && !!liveUrl();
+  // Gate on liveMode, not liveUrl: the URL now always has a default value, so
+  // only a fetch that actually succeeded may lock the manual controls.
+  usd.disabled = autoMode && liveMode;
   const fb = document.getElementById('fable-btn');
   if (fb) {
-    fb.disabled = !autoMode || !liveUrl();
+    fb.disabled = !autoMode || !liveMode;
     fb.classList.toggle('on', fableMode);
   }
+  // Live feed present: the sliders are no longer inputs, they are just where
+  // the fetched numbers live, so the whole manual apparatus comes off screen.
+  document.body.classList.toggle('live-mode', liveMode);
 }
 
+// Try the endpoint first; a feed that is missing or has gone away falls back to
+// the clock rather than freezing on the last reading (Jeff 2026-08-06: a dead
+// feed used to stall time sync entirely instead of degrading).
 function autoRefresh() {
-  if (liveUrl()) { pollLive(); return; }   // percentage + time from the endpoint
-  animateSlider(getAutoHours());           // no endpoint: clock only
-  update();
+  pollLive().then(function(ok) {
+    if (ok) return;
+    if (liveMode) { liveMode = false; applyAutoUI(); }   // feed died: give the controls back
+    animateSlider(getAutoHours());
+    update();
+  });
 }
 
 function setAuto(want) {
@@ -984,7 +1031,7 @@ function toggleAuto() {
 }
 
 function toggleFable() {
-  if (!autoMode || !liveUrl()) return;
+  if (!autoMode || !liveMode) return;
   fableMode = !fableMode;
   try { localStorage.setItem('cmuc_fable', fableMode ? '1' : '0'); } catch(e) {}
   applyAutoUI();
@@ -1072,7 +1119,7 @@ function updateExtHint() {
   if (!_extSnapAt) { el.style.display = 'none'; return; }
   const ageSec = Math.floor((Date.now() - _extSnapAt) / 1000);
   const ageStr = ageSec < 60 ? 'just now' : Math.floor(ageSec / 60) + 'm ago';
-  el.textContent = 'via extension · synced ' + ageStr;
+  el.textContent = (liveMode ? 'live · synced ' : 'via extension · synced ') + ageStr;
   el.style.display = '';
 }
 function update() {
@@ -1358,8 +1405,13 @@ let liveMode = false;          // true once a fetch has succeeded
 let fableMode = false;         // measure against the Fable window instead
 try { fableMode = localStorage.getItem('cmuc_fable') === '1'; } catch(e) {}
 
+// A same-origin `./live.json` is the zero-config default: a host that serves
+// this page next to a live feed goes automatic with no setup, and a host that
+// does not (GitHub Pages) 404s, which pollLive treats as "no feed" and the
+// manual sliders stay authoritative. localStorage still overrides for a feed
+// on another origin.
 function liveUrl() {
-  try { return localStorage.getItem(LIVE_KEY) || ''; } catch(e) { return ''; }
+  try { return localStorage.getItem(LIVE_KEY) || './live.json'; } catch(e) { return './live.json'; }
 }
 
 // Which window drives the maths. Fable mode swaps in the per-model quota so
@@ -1393,7 +1445,18 @@ async function pollLive() {
   const win = pickWindow(snap);
   if (!win || typeof win.pct !== 'number') return false;
 
-  if (!autoMode) { liveMode = true; return true; }   // primed, but MAN wins
+  // A real feed means there is nothing left to drive by hand, so it takes over
+  // rather than waiting to be switched on. Set the flag directly instead of
+  // calling toggleAuto, which would re-enter this function through autoRefresh.
+  if (!autoMode) {
+    autoMode = true;
+    try { localStorage.setItem('cmuc_auto', '1'); } catch(e) {}
+    clearInterval(autoTick);
+    autoTick = setInterval(autoRefresh, 30000);
+  }
+  liveMode = true;
+  liveResetsAt = win.resetsAt || null;
+  applyAutoUI();
   document.getElementById('used').value = Math.round(win.pct);
   const el = hoursElapsedFrom(win.resetsAt);
   if (el !== null) document.getElementById('hours').value = el.toFixed(1);
