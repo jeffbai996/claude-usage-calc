@@ -997,15 +997,38 @@ function applyAutoUI() {
 // Try the endpoint first; a feed that is missing or has gone away falls back to
 // the clock rather than freezing on the last reading (Jeff 2026-08-06: a dead
 // feed used to stall time sync entirely instead of degrading).
+//
+// One miss is not an outage. Dropping out of live mode on a single failed poll
+// made the FABLE button — which is gated on liveMode — grey itself out on any
+// blip, and since a backgrounded tab has its 30s timer throttled to about a
+// minute, it then stayed grey long enough to look permanent (Jeff 2026-08-07:
+// "the fable button no longer works"). Two consecutive misses is a real outage.
+let liveMisses = 0;
 function autoRefresh() {
-  pollLive().then(function(ok) {
-    if (ok) return;
-    if (liveMode) { liveMode = false; applyAutoUI(); }   // feed died: give the controls back
-    updateExtHint();                                     // and say so, rather than going quiet
+  return pollLive().then(function(ok) {
+    if (ok) { liveMisses = 0; return; }
+    liveMisses++;
+    if (liveMisses >= 2 && liveMode) { liveMode = false; applyAutoUI(); }
+    updateExtHint();                                     // say why, rather than going quiet
     animateSlider(getAutoHours());
     update();
   });
 }
+
+// A backgrounded tab's timers are throttled, so coming back to this page could
+// mean looking at a reading several minutes old with no poll due. Refresh on
+// the way in instead of waiting for the next tick.
+let _lastPollAt = 0;
+function pollNow() {
+  if (!autoMode) return;
+  if (Date.now() - _lastPollAt < 5000) return;   // focus + visibility both fire on a tab switch
+  _lastPollAt = Date.now();
+  autoRefresh();
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') pollNow();
+});
+window.addEventListener('focus', pollNow);
 
 function setAuto(want) {
   if (autoMode === want) return;
@@ -1482,6 +1505,7 @@ async function pollLive() {
   }
   liveMode = true;
   liveErr = null;
+  liveMisses = 0;
   _snapSrc = 'live';
   liveResetsAt = win.resetsAt || null;
   applyAutoUI();
