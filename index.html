@@ -1467,8 +1467,9 @@ try { fableMode = localStorage.getItem('cmuc_fable') === '1'; } catch(e) {}
 // does not (GitHub Pages) 404s, which pollLive treats as "no feed" and the
 // manual sliders stay authoritative. localStorage still overrides for a feed
 // on another origin.
+const DEFAULT_LIVE_URL = './live.json';
 function liveUrl() {
-  try { return localStorage.getItem(LIVE_KEY) || './live.json'; } catch(e) { return './live.json'; }
+  try { return localStorage.getItem(LIVE_KEY) || DEFAULT_LIVE_URL; } catch(e) { return DEFAULT_LIVE_URL; }
 }
 
 // Which window drives the maths. Fable mode swaps in the per-model quota so
@@ -1505,16 +1506,34 @@ function hoursElapsedFrom(resetsAt) {
 // (Jeff 2026-08-07: "usage sync not working", with no way to see what it was).
 function liveFail(reason) { liveErr = reason; return false; }
 
+// Fetch one candidate feed. Returns the snapshot, or null with `liveErr` set.
+async function fetchSnap(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) { liveFail(url + ' → HTTP ' + res.status); return null; }
+    const snap = await res.json();
+    if (!snap || !snap.ok) { liveFail(url + ' reported not ready'); return null; }
+    return snap;
+  } catch(e) { liveFail(url + ' unreachable'); return null; }
+}
+
 async function pollLive() {
   const url = liveUrl();
   if (!url) return liveFail('no feed URL set');
-  let snap;
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return liveFail(url + ' → HTTP ' + res.status);
-    snap = await res.json();
-  } catch(e) { return liveFail(url + ' unreachable'); }
-  if (!snap || !snap.ok) return liveFail(url + ' reported not ready');
+  let snap = await fetchSnap(url);
+  // A dead hand-set override must not permanently shadow a working same-origin
+  // feed. `cmuc_live_url` is set by hand and nothing in the app ever cleared
+  // it, so one stale value disabled the calculator forever with no way back
+  // from the UI — Jeff's pointed at /squad/api/usage-snapshot, a route that
+  // does not exist, and the page had been manual ever since (2026-08-07).
+  if (!snap && url !== DEFAULT_LIVE_URL) {
+    const fallback = await fetchSnap(DEFAULT_LIVE_URL);
+    if (fallback) {
+      try { localStorage.removeItem(LIVE_KEY); } catch(e) {}
+      snap = fallback;
+    }
+  }
+  if (!snap) return false;
 
   const win = pickWindow(snap);
   if (!win || typeof win.pct !== 'number') return liveFail('feed carries no usage number');
