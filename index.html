@@ -691,7 +691,9 @@ function getAutoHours() {
 // over the configured day/hour/tz guess (which was drifting a whole cycle out).
 let liveResetsAt = null;
 function getResetHrs() {
-  if (liveMode && liveResetsAt) {
+  // Not gated on liveMode: a reset instant learned from a live poll stays the
+  // true one after the feed drops, and the countdown keeps running off it.
+  if (liveResetsAt) {
     const t = Date.parse(liveResetsAt);
     if (isFinite(t)) return Math.max(0, (t - Date.now()) / 3600000);
   }
@@ -1008,11 +1010,28 @@ function autoRefresh() {
   return pollLive().then(function(ok) {
     if (ok) { liveMisses = 0; return; }
     liveMisses++;
-    if (liveMisses >= 2 && liveMode) { liveMode = false; applyAutoUI(); }
+    // Below the outage threshold, leave the last live reading alone. Falling
+    // through here on a single blip overwrote a correct 56.5h with the
+    // configured cycle's 12.5h while the page still said "live · synced" — the
+    // 44h jump that shows up as "618% quota used, 14h left" (Jeff 2026-08-06).
+    if (liveMisses < 2 && liveMode) return;
+    if (liveMode) { liveMode = false; applyAutoUI(); }
     updateExtHint();                                     // say why, rather than going quiet
-    animateSlider(getAutoHours());
+    animateSlider(fallbackHours());
     update();
   });
+}
+
+// A dead feed still leaves the reset instant from the last good poll, and the
+// clock keeps running — so elapsed stays correct even with no fresh percentage.
+// The configured cycle is only right for someone who never had a feed; here it
+// is whatever was last dialled in by hand, which is 44h adrift.
+function fallbackHours() {
+  if (liveResetsAt) {
+    const el = hoursElapsedFrom(liveResetsAt);
+    if (el !== null) return el;
+  }
+  return getAutoHours();
 }
 
 // A backgrounded tab's timers are throttled, so coming back to this page could
@@ -1386,10 +1405,16 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ---------- Polling ----------
+// The manual-mode clock. It must not touch the slider while a live feed owns
+// it: elapsed is then derived from the reported reset instant, and this ticker
+// was overwriting that with the configured cycle every 15 seconds. The live
+// poll runs every 30s and put it back, so the page alternated between a correct
+// 56.5h and a 44h-adrift 12.5h twice a minute — whichever you happened to look
+// at was a coin flip. That is the "hit FABLE and the reset time goes haywire and
+// says I have lots of quota when I don't" reading (Jeff 2026-08-06, 2026-08-07).
 setInterval(function() {
-  if (autoMode) {
-    const sl = document.getElementById('hours');
-    sl.value = getAutoHours().toFixed(3);
+  if (autoMode && !liveMode) {
+    document.getElementById('hours').value = fallbackHours().toFixed(3);
   }
   updateExtHint();
   saveState();
