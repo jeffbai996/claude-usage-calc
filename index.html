@@ -1001,6 +1001,7 @@ function autoRefresh() {
   pollLive().then(function(ok) {
     if (ok) return;
     if (liveMode) { liveMode = false; applyAutoUI(); }   // feed died: give the controls back
+    updateExtHint();                                     // and say so, rather than going quiet
     animateSlider(getAutoHours());
     update();
   });
@@ -1111,12 +1112,19 @@ function maybeUpdateMeta() {
 function updateExtHint() {
   const el = document.getElementById('ext-snap-hint');
   if (!el) return;
+  // Name the broken feed. Without this the page looks identical whether the
+  // endpoint 404s, the host is off the tailnet, or there was never a feed.
+  if (!liveMode && liveErr) {
+    el.textContent = 'no live feed · ' + liveErr;
+    el.style.display = '';
+    return;
+  }
   if (!_extSnapAt) { el.style.display = 'none'; return; }
   const ageSec = Math.floor((Date.now() - _extSnapAt) / 1000);
   const ageStr = ageSec < 60 ? 'just now' : Math.floor(ageSec / 60) + 'm ago';
   const src = liveMode
     ? (fableStale ? 'live · no Fable window, showing all-model · synced ' : 'live · synced ')
-    : 'via extension · synced ';
+    : (_snapSrc === 'ext' ? 'via extension · synced ' : 'last reading ');
   el.textContent = src + ageStr;
   el.style.display = '';
 }
@@ -1385,6 +1393,7 @@ function loadExtensionSnap(snap) {
       try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
     }
     _extSnapAt = raw.capturedAt || Date.now();
+    _snapSrc = 'ext';
     updateExtHint();
     return true;
   } catch(e) { return false; }
@@ -1400,6 +1409,8 @@ function loadExtensionSnap(snap) {
 //                  weeklyAll: { pct, resetsAt }, fable?: { pct, resetsAt } }
 const LIVE_KEY = 'cmuc_live_url';
 let liveMode = false;          // true once a fetch has succeeded
+let liveErr = null;            // why the last poll failed, for the status line
+let _snapSrc = null;           // 'live' | 'ext' — what produced _extSnapAt
 let fableMode = false;         // measure against the Fable window instead
 try { fableMode = localStorage.getItem('cmuc_fable') === '1'; } catch(e) {}
 
@@ -1440,19 +1451,25 @@ function hoursElapsedFrom(resetsAt) {
   return Math.max(0, Math.min(168, elapsed));
 }
 
+// A failed poll used to be entirely silent — the hint stayed hidden and the page
+// just sat on the manual sliders, so "the feed is broken" looked exactly like
+// "there is no feed here." Record why it failed so the status line can say it
+// (Jeff 2026-08-07: "usage sync not working", with no way to see what it was).
+function liveFail(reason) { liveErr = reason; return false; }
+
 async function pollLive() {
   const url = liveUrl();
-  if (!url) return false;
+  if (!url) return liveFail('no feed URL set');
   let snap;
   try {
     const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return false;
+    if (!res.ok) return liveFail(url + ' → HTTP ' + res.status);
     snap = await res.json();
-  } catch(e) { return false; }
-  if (!snap || !snap.ok) return false;
+  } catch(e) { return liveFail(url + ' unreachable'); }
+  if (!snap || !snap.ok) return liveFail(url + ' reported not ready');
 
   const win = pickWindow(snap);
-  if (!win || typeof win.pct !== 'number') return false;
+  if (!win || typeof win.pct !== 'number') return liveFail('feed carries no usage number');
 
   // A real feed means there is nothing left to drive by hand, so it takes over
   // rather than waiting to be switched on. Set the flag directly instead of
@@ -1464,6 +1481,8 @@ async function pollLive() {
     autoTick = setInterval(autoRefresh, 30000);
   }
   liveMode = true;
+  liveErr = null;
+  _snapSrc = 'live';
   liveResetsAt = win.resetsAt || null;
   applyAutoUI();
   document.getElementById('used').value = Math.round(win.pct);
@@ -1497,7 +1516,7 @@ loadExtensionSnap();
 // the history graph smooth — v0.9 dropped the sparkline because hand-dragged
 // points arrived at random intervals and drew a staircase (Jeff 2026-08-02).
 // One poll at boot so AUTO has data the moment it is switched on.
-pollLive().then(function(){ applyAutoUI(); });
+pollLive().then(function(){ applyAutoUI(); updateExtHint(); });
 applyAutoUI();
 const hashWantAuto = applyHash();
 populateDrawer();
