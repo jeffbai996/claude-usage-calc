@@ -98,18 +98,6 @@
   .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
   .delta-arrow.up { color: var(--text-danger); }
   .delta-arrow.down { color: var(--text-success); }
-  .stepper-wrap { display: flex; align-items: center; gap: 5px; }
-  .stepper-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 6px;
-    border: 1px solid var(--border); background: var(--bg-secondary);
-    color: var(--text-secondary); font-size: 13px; font-weight: 400;
-    cursor: pointer; user-select: none; line-height: 1;
-    transition: background .12s, color .12s, border-color .12s;
-    touch-action: manipulation;
-  }
-  .stepper-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
-  .stepper-btn:active { transform: scale(0.9); }
   .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 800; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
 
   /* Daily burn bars inside pace card */
@@ -215,7 +203,6 @@
   @media (pointer: coarse) {
     input[type=range] { height: 32px; }
     input[type=range]::-webkit-slider-thumb { width: 24px; height: 24px; }
-    .stepper-btn { width: 40px; height: 40px; font-size: 20px; }
     .toggle-btn { min-height: 32px; padding: 6px 0; }
     .icon-btn { width: 36px; height: 36px; }
     .icon-btn svg { width: 16px; height: 16px; }
@@ -285,7 +272,6 @@ body, button, input, select, textarea { font-family: var(--ui-font); }
    visible rather than hidden so the numbers still read at a glance. */
 body.live-mode #used-row,
 body.live-mode #hours-row,
-body.live-mode .stepper-wrap,
 body.live-mode #plan-btn,
 body.live-mode #mode-seg { opacity: .55; pointer-events: none; }
 body.live-mode #live-plan { display: inline-block; }
@@ -303,7 +289,7 @@ body.live-mode #live-plan { display: inline-block; }
 <div class="container">
 
 <div class="title-row">
-  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.02em">v1.0</span></h1>
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.02em">v1.1</span></h1>
   <div class="right">
     <span class="copy-fb" id="copy-fb">copied</span>
     <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
@@ -347,10 +333,6 @@ body.live-mode #live-plan { display: inline-block; }
            without one (Jeff 2026-08-02). -->
       <button class="toggle-btn" id="fable-btn" onclick="toggleFable()" disabled>FABLE</button>
       <span class="auto-lbl" id="auto-hint"></span>
-    </div>
-    <div class="stepper-wrap">
-      <button class="stepper-btn" data-delta="-1" onclick="stepUsed(-1)">−</button>
-      <button class="stepper-btn" data-delta="1" onclick="stepUsed(1)">+</button>
     </div>
   </div>
 </div>
@@ -1194,10 +1176,10 @@ function update() {
   rollingSet('m-proj', hrs > 0 ? proj.toFixed(2) + '%' : '—');
   document.getElementById('tok-used-sub').textContent = 'of ~' + TOK + ' MTok total';
 
-  let projLabel, statusText, bgColor, textColor, dotColor;
-  if (proj <= 90)       { projLabel = 'comfortably under';  statusText = 'on track — running under pace';         bgColor = 'var(--bg-success)'; textColor = 'var(--text-success)'; dotColor = '#1D9E75'; }
-  else if (proj <= 100) { projLabel = 'cutting it close';   statusText = 'marginal — watch for heavy sessions';   bgColor = 'var(--bg-warning)'; textColor = 'var(--text-warning)'; dotColor = '#BA7517'; }
-  else                  { projLabel = 'robbed by API';       statusText = 'over pace — projected to exceed limit'; bgColor = 'var(--bg-danger)';  textColor = 'var(--text-danger)';  dotColor = '#E24B4A'; }
+  let projLabel, statusText, bgColor, textColor, dotColor, statusWeight;
+  if (proj <= 90)       { projLabel = 'comfortably under';  statusText = 'on track — running under pace';         bgColor = 'var(--bg-success)'; textColor = 'var(--text-success)'; dotColor = '#1D9E75'; statusWeight = 700; }
+  else if (proj <= 100) { projLabel = 'cutting it close';   statusText = 'marginal — watch for heavy sessions';   bgColor = 'var(--bg-warning)'; textColor = 'var(--text-warning)'; dotColor = '#BA7517'; statusWeight = 700; }
+  else                  { projLabel = 'robbed by API';       statusText = 'over pace — projected to exceed limit'; bgColor = 'var(--bg-danger)';  textColor = 'var(--text-danger)';  dotColor = '#E24B4A'; statusWeight = 500; }
 
   document.getElementById('m-proj-sub').textContent = hrs > 0 ? projLabel : 'no data yet';
   const pCls = hrs > 0 ? cls(proj, 90, 100) : '';
@@ -1205,7 +1187,7 @@ function update() {
   document.getElementById('m-proj').className    = 'metric-val' + (pCls ? ' c-' + pCls : '');
 
   const sp = document.getElementById('status-pill');
-  sp.style.background = bgColor; sp.style.color = textColor;
+  sp.style.background = bgColor; sp.style.color = textColor; sp.style.fontWeight = statusWeight;
   document.getElementById('status-text').textContent = statusText;
   document.getElementById('status-dot').style.background = dotColor;
 
@@ -1345,16 +1327,6 @@ document.getElementById('used').addEventListener('pointerup', function() {
 });
 document.getElementById('used').addEventListener('input', function() { saveState(); update(); });
 document.getElementById('hours').addEventListener('input', function() { saveState(); update(); });
-
-// Touchstart on stepper buttons: fires immediately (no 300ms delay) and
-// preventDefault stops the browser from also firing click (no double-call)
-// and disables double-tap zoom on those elements.
-document.querySelectorAll('.stepper-btn').forEach(function(btn) {
-  btn.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    stepUsed(parseInt(btn.dataset.delta, 10));
-  }, { passive: false });
-});
 
 // ---------- Copy to clipboard ----------
 function copyStatus() {
