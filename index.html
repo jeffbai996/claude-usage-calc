@@ -73,7 +73,7 @@
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
   .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
-  .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; padding-left: 100px; margin: -4px 0 5px; }
+  .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; }
   .toggle-btn {
     font-family: "Plus Jakarta Sans", "Anthropic Sans", -apple-system, sans-serif;
     font-size: 11px;
@@ -308,7 +308,6 @@ body.live-mode #live-plan { display: inline-block; }
     <input type="range" min="0" max="100" value="13" step="1" id="used">
     <span class="val" id="used-out">13%</span>
   </div>
-  <div id="ext-snap-hint" class="ext-snap-hint" style="display:none"></div>
   <div class="row-ctrl" id="hours-row" style="margin-bottom:3px">
     <label>hours elapsed</label>
     <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
@@ -333,6 +332,7 @@ body.live-mode #live-plan { display: inline-block; }
            without one (Jeff 2026-08-02). -->
       <button class="toggle-btn" id="fable-btn" onclick="toggleFable()" disabled>FABLE</button>
       <span class="auto-lbl" id="auto-hint"></span>
+      <span id="ext-snap-hint" class="ext-snap-hint" style="display:none"></span>
     </div>
   </div>
 </div>
