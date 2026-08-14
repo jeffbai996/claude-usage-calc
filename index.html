@@ -25,7 +25,15 @@
       --scrim: rgba(0,0,0,0.55);
     }
   }
-  body { font-family: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg-secondary); color: var(--text-primary); min-height: 100vh; padding: 1.5rem; }
+  /* min-height uses dvh, not vh. On iOS Safari `100vh` is the LARGE viewport —
+     the height the page would have with the toolbars hidden — so with the
+     toolbars on screen a 100vh body is taller than what you can actually see
+     and the page scrolls past its own content. dvh tracks the real visible
+     height. vh stays first as the fallback for anything without dvh.
+     overflow-x is clamped because the settings drawer parks itself one full
+     screen-width to the right via translateX(100%); WebKit counts an
+     off-viewport fixed element in the scrollable area, Chromium doesn't. */
+  body { font-family: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg-secondary); color: var(--text-primary); min-height: 100vh; min-height: 100dvh; padding: 1.5rem; overflow-x: hidden; }
   .container { max-width: 680px; margin: 0 auto; }
   .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; transition: background .2s; }
   .card.t-success { background: var(--bg-success); }
@@ -71,7 +79,14 @@
   .copy-fb { font-size: 11px; color: var(--text-success); margin-right: 2px; opacity: 0; transition: opacity .2s; }
   .copy-fb.on { opacity: 1; }
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
-  .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
+  /* The controls in this row are fixed-size pills; letting flex shrink them
+     clipped "AUTO" to "AUT" on every phone width (Jeff 2026-08-14 — the seg
+     wanted 101px and was being handed 66). They wrap to a second line instead
+     of getting squeezed. */
+  .auto-row > div { flex-wrap: wrap; row-gap: 6px; }
+  .auto-row .seg, .auto-row .toggle-btn, .auto-row .auto-lbl,
+  .auto-row #live-plan, .auto-row .ext-snap-hint { flex: 0 0 auto; }
   .auto-lbl { font-size: 11px; color: var(--text-secondary); }
   .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; }
   .toggle-btn {
@@ -131,19 +146,30 @@
   .resume-card.on { display: block; }
 
   /* Settings drawer */
+  /* Both are parked off-screen rather than removed, so they stay animatable.
+     `visibility: hidden` is what actually takes them out of the layout's
+     scrollable extent (and off the a11y tree / tab order) while closed —
+     opacity and translate alone leave a full-viewport box parked next to the
+     page for WebKit to count. The 0s visibility transition is delayed by the
+     length of the visual one so the close animation still plays out before the
+     element blinks away. */
   .scrim {
     position: fixed; inset: 0; background: var(--scrim);
-    opacity: 0; pointer-events: none; transition: opacity .2s;
+    opacity: 0; pointer-events: none; visibility: hidden;
+    transition: opacity .2s, visibility 0s linear .2s;
     z-index: 49;
   }
-  .scrim.on { opacity: 1; pointer-events: auto; }
+  .scrim.on { opacity: 1; pointer-events: auto; visibility: visible;
+    transition: opacity .2s, visibility 0s; }
   .drawer {
     position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100%;
     background: var(--bg); border-left: 0.5px solid var(--border);
-    transform: translateX(100%); transition: transform .25s cubic-bezier(.2,.9,.3,1);
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .25s cubic-bezier(.2,.9,.3,1), visibility 0s linear .25s;
     z-index: 50; overflow-y: auto; display: flex; flex-direction: column;
   }
-  .drawer.on { transform: translateX(0); }
+  .drawer.on { transform: translateX(0); visibility: visible;
+    transition: transform .25s cubic-bezier(.2,.9,.3,1), visibility 0s; }
   .drawer-header {
     position: sticky; top: 0; z-index: 1;
     background: var(--bg); padding: 16px 20px 13px;
