@@ -25,7 +25,7 @@ It syncs to your system clock automatically, so the "hours elapsed since reset" 
 
 ## Live demo
 
-**[jeffbai996.github.io/claude-max-usage-calculator](https://jeffbai996.github.io/claude-usage-calc/)**
+**[jeffbai996.github.io/claude-usage-calc](https://jeffbai996.github.io/claude-usage-calc/)**
 
 Or clone and open `index.html` locally — no server needed.
 
@@ -91,7 +91,7 @@ The URL hash (`#u=13&h=23&p=20x`) mirrors current state. Share or bookmark a spe
 
 ## Chrome Extension
 
-The `extension/` directory contains a Chrome extension that scrapes your usage percentage directly from claude.ai and writes it into `localStorage` so the calculator auto-fills it. When active, a small **"via extension · synced Xm ago"** hint appears below the usage slider.
+The `extension/` directory contains a Chrome extension that reads your usage from claude.ai/settings/usage and writes it into the calculator page's `localStorage` so the calculator auto-fills it. When active, a small **"via extension · synced Xm ago"** hint appears below the usage slider.
 
 ### Install (developer mode)
 1. Open `chrome://extensions`
@@ -99,7 +99,7 @@ The `extension/` directory contains a Chrome extension that scrapes your usage p
 3. Click **Load unpacked** and select the `extension/` folder
 4. Visit [claude.ai](https://claude.ai) — usage syncs automatically
 
-The extension only reads the usage percentage shown on claude.ai. It does not make any network requests and cannot see your conversations.
+The extension reads the usage page only: the session, weekly all-models and weekly Sonnet-only percentages and the plan tier. If the usage page is not already open, it opens it in a background tab every 30 minutes and closes it after a few seconds. It sends the snapshot only to open calculator tabs and does not read your conversations. See [extension/README.md](extension/README.md).
 
 ---
 
@@ -135,7 +135,7 @@ No Jekyll, no config files, no build pipeline — GitHub Pages serves static HTM
 
 ## Architecture
 
-Single file. No dependencies. No build.
+One HTML file, no JavaScript dependencies, no build. The page loads two web fonts from Google Fonts and one from the bundled `fonts/` directory.
 
 ```
 index.html
@@ -143,10 +143,15 @@ index.html
 ├── <body>        Slider controls, metric cards, history chart, token section
 └── <script>      All logic — vanilla JS, no bundler
 
+fonts/            Self-hosted font used by index.html
+
 extension/
 ├── manifest.json
-├── content.js    Scrapes usage % from claude.ai
-└── background.js Bridges content → calculator via localStorage
+├── content_scrape.js  Reads usage from claude.ai/settings/usage
+├── content_bridge.js  Writes the snapshot into the calculator page
+├── background.js      Stores snapshots, refreshes every 30 minutes
+├── parse.js           Reference copy of the parser
+└── popup.html, popup.js
 ```
 
 ### Key design decisions
