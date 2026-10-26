@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Max Usage Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg-secondary: #f5f5f3;
+    --bg-success: #eaf3de; --bg-warning: #faeeda; --bg-danger: #fcebeb;
+    --text-primary: #1a1a18; --text-secondary: #6b6b67;
+    --border: rgba(0,0,0,0.10);
+    --text-success: #3b6d11; --text-warning: #854f0b; --text-danger: #a32d2d;
+    --radius-md: 8px; --radius-lg: 12px; --blue: #378ADD;
+    --scrim: rgba(0,0,0,0.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg-secondary: #2a2a28;
+      --bg-success: #173404; --bg-warning: #412402; --bg-danger: #501313;
+      --text-primary: #f0ede8; --text-secondary: #a0a09a;
+      --border: rgba(255,255,255,0.10);
+      --text-success: #c0dd97; --text-warning: #fac775; --text-danger: #f7c1c1;
+      --scrim: rgba(0,0,0,0.55);
+    }
+  }
+  /* min-height uses dvh, not vh. On iOS Safari `100vh` is the LARGE viewport —
+     the height the page would have with the toolbars hidden — so with the
+     toolbars on screen a 100vh body is taller than what you can actually see
+     and the page scrolls past its own content. dvh tracks the real visible
+     height. vh stays first as the fallback for anything without dvh.
+     overflow-x is clamped because the settings drawer parks itself one full
+     screen-width to the right via translateX(100%); WebKit counts an
+     off-viewport fixed element in the scrollable area, Chromium doesn't. */
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg-secondary); color: var(--text-primary); min-height: 100vh; min-height: 100dvh; padding: 1.5rem; overflow-x: hidden; }
+  .container { max-width: 680px; margin: 0 auto; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; transition: background .2s; }
+  .card.t-success { background: var(--bg-success); }
+  .card.t-warning { background: var(--bg-warning); }
+  .card.t-danger  { background: var(--bg-danger); }
+  .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
+  .metric-val { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.1; transition: color .2s; }
+  .metric-val.c-success { color: var(--text-success); }
+  .metric-val.c-warning { color: var(--text-warning); }
+  .metric-val.c-danger  { color: var(--text-danger); }
+  .metric-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  .g2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .g3 { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .bar-bg { background: var(--bg-secondary); border-radius: 4px; height: 5px; overflow: hidden; }
+  .bar-fill { height: 5px; border-radius: 4px; transition: width .3s ease; }
+  .row-ctrl { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .row-ctrl label { font-size: 12px; color: var(--text-secondary); min-width: 88px; }
+  .row-ctrl input[type=range] { flex: 1; accent-color: var(--blue); }
+  .row-ctrl input[type=range]:disabled { opacity: .35; }
+  .row-ctrl .val { font-size: 13px; font-weight: 500; min-width: 42px; text-align: right; color: var(--text-primary); }
+  .day-marks { display: flex; justify-content: space-between; padding-left: 98px; padding-right: 54px; margin-top: 1px; margin-bottom: 10px; }
+  .day-mark { font-size: 10px; color: var(--text-secondary); text-align: center; flex: 1; }
+  .day-mark.active { color: var(--text-primary); font-weight: 800; }
+  .status-pill { font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; transition: background .2s, color .2s; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .section-head { font-size: 10px; color: var(--text-secondary); font-weight: 800; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+  .hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .hdr-title { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+  .disclaimer { font-size: 10px; color: var(--text-secondary); font-style: italic; margin-top: 8px; line-height: 1.6; }
+  h1 { font-size: 17px; font-weight: 600; color: var(--text-primary); }
+  .title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+  .title-row .right { display: flex; align-items: center; gap: 6px; }
+  .reset-badge { font-size: 11px; color: var(--text-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+  .icon-btn {
+    background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px;
+    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-secondary); padding: 0;
+    transition: background .12s, color .12s, border-color .12s;
+    touch-action: manipulation;
+  }
+  .icon-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .copy-fb { font-size: 11px; color: var(--text-success); margin-right: 2px; opacity: 0; transition: opacity .2s; }
+  .copy-fb.on { opacity: 1; }
+  .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
+  .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
+  /* The controls in this row are fixed-size pills; letting flex shrink them
+     clipped "AUTO" to "AUT" on every phone width (Jeff 2026-08-14 — the seg
+     wanted 101px and was being handed 66). They wrap to a second line instead
+     of getting squeezed. */
+  .auto-row > div { flex-wrap: wrap; row-gap: 6px; }
+  .auto-row .seg, .auto-row .toggle-btn, .auto-row .auto-lbl,
+  .auto-row #live-plan, .auto-row .ext-snap-hint { flex: 0 0 auto; }
+  .auto-lbl { font-size: 11px; color: var(--text-secondary); }
+  .ext-snap-hint { font-size: 10px; color: var(--text-secondary); font-style: italic; }
+  .toggle-btn {
+    font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    padding: 4px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    transition: background .15s, color .15s, border-color .15s;
+    min-width: 48px;
+    text-align: center;
+    touch-action: manipulation;
+  }
+  .toggle-btn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .delta-line { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
+  .delta-arrow.up { color: var(--text-danger); }
+  .delta-arrow.down { color: var(--text-success); }
+  .tok-section-head { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-secondary); font-weight: 800; margin: 13px 0 7px; letter-spacing: .07em; text-transform: uppercase; }
+
+  /* Daily burn bars inside pace card */
+  .daybars-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
+  .daybars-hdr { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .daybars-hdr .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+  .daybars-hdr .sub { font-size: 10px; color: var(--text-secondary); font-style: italic; }
+  .daybars { display: flex; align-items: flex-end; gap: 6px; height: 54px; position: relative; }
+  .daybars .pace-ref { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(140,140,140,.5); pointer-events: none; }
+  .daybar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+  .daybar-track { width: 100%; height: 100%; display: flex; align-items: flex-end; border-radius: 3px; overflow: hidden; background: var(--bg-secondary); }
+  .daybar-fill { width: 100%; min-height: 0; border-radius: 3px 3px 0 0; transition: height .3s ease, opacity .2s; }
+  .daybar-fill.today { opacity: .72; }
+  .daybar-lbl { font-size: 9px; color: var(--text-secondary); margin-top: 4px; }
+  .daybar-lbl.active { color: var(--text-primary); font-weight: 800; }
+  .daybars-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; text-align: center; padding: 18px 0; }
+
+  /* Burn split card */
+  .burn-split { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+  .burn-split .col { flex: 1; }
+  .burn-split .col.second { border-left: 0.5px solid var(--border); padding-left: 10px; }
+  .burn-split .bval { font-size: 18px; font-weight: 500; line-height: 1.1; transition: color .2s; }
+  .burn-split .bval.c-success { color: var(--text-success); }
+  .burn-split .bval.c-warning { color: var(--text-warning); }
+  .burn-split .bval.c-danger  { color: var(--text-danger); }
+  .burn-split .blbl { font-size: 10px; color: var(--text-secondary); letter-spacing: .05em; text-transform: uppercase; }
+  .burn-split .bsub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* Resume-in card */
+  .resume-card { margin-bottom: 8px; display: none; }
+  .resume-card.on { display: block; }
+
+  /* Settings drawer */
+  /* Both are parked off-screen rather than removed, so they stay animatable.
+     `visibility: hidden` is what actually takes them out of the layout's
+     scrollable extent (and off the a11y tree / tab order) while closed —
+     opacity and translate alone leave a full-viewport box parked next to the
+     page for WebKit to count. The 0s visibility transition is delayed by the
+     length of the visual one so the close animation still plays out before the
+     element blinks away. */
+  .scrim {
+    position: fixed; inset: 0; background: var(--scrim);
+    opacity: 0; pointer-events: none; visibility: hidden;
+    transition: opacity .2s, visibility 0s linear .2s;
+    z-index: 49;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; visibility: visible;
+    transition: opacity .2s, visibility 0s; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100%;
+    background: var(--bg); border-left: 0.5px solid var(--border);
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .25s cubic-bezier(.2,.9,.3,1), visibility 0s linear .25s;
+    z-index: 50; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .drawer.on { transform: translateX(0); visibility: visible;
+    transition: transform .25s cubic-bezier(.2,.9,.3,1), visibility 0s; }
+  .drawer-header {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--bg); padding: 16px 20px 13px;
+    border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+  }
+  .drawer h2 {
+    font-size: 15px; font-weight: 800; color: var(--text-primary);
+    display: flex; justify-content: space-between; align-items: center; margin: 0;
+  }
+  .drawer-close-btn {
+    background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: 6px;
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-secondary); padding: 0;
+    transition: background .12s, color .12s, border-color .12s;
+    touch-action: manipulation;
+  }
+  .drawer-close-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .drawer-close-btn svg { width: 14px; height: 14px; }
+  .drawer-body { padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .drawer-section { background: var(--bg-secondary); border-radius: 10px; padding: 12px 14px; }
+  .drawer-section h3 {
+    font-size: 10px; color: var(--text-secondary); font-weight: 800;
+    letter-spacing: .07em; text-transform: uppercase;
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border);
+  }
+  .drawer-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .drawer-section > .drawer-row:last-child { margin-bottom: 0; }
+  .drawer-row label { font-size: 12px; color: var(--text-secondary); min-width: 70px; flex-shrink: 0; }
+  .drawer-row select, .drawer-row input[type="number"] {
+    flex: 1; padding: 6px 10px; font-size: 12px; color: var(--text-primary);
+    background: var(--bg); border: 0.5px solid var(--border); border-radius: 6px;
+    font-family: inherit; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .drawer-row select:focus, .drawer-row input[type="number"]:focus {
+    border-color: var(--blue); box-shadow: 0 0 0 2px rgba(55,138,221,.15);
+  }
+  .drawer-row input[type="checkbox"] { accent-color: var(--blue); width: 16px; height: 16px; }
+  .drawer .hint {
+    font-size: 10px; color: var(--text-secondary); font-style: italic;
+    line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 0.5px solid var(--border);
+  }
+  .drawer-btn {
+    padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 8px;
+    border: 0.5px solid var(--border); background: var(--bg); color: var(--text-primary);
+    cursor: pointer; font-family: inherit; touch-action: manipulation;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .drawer-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .drawer-btn.danger { color: var(--text-danger); }
+  .drawer-btn.danger:hover { background: var(--text-danger); border-color: var(--text-danger); color: #fff; }
+  .drawer-footer {
+    font-size: 10px; color: var(--text-secondary); font-style: italic; line-height: 1.6;
+    padding: 4px 2px;
+  }
+
+  /* Mobile touch tuning */
+  @media (pointer: coarse) {
+    input[type=range] { height: 32px; }
+    input[type=range]::-webkit-slider-thumb { width: 24px; height: 24px; }
+    .toggle-btn { min-height: 32px; padding: 6px 0; }
+    .icon-btn { width: 36px; height: 36px; }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .drawer-close-btn { width: 36px; height: 36px; }
+  }
+  @media (max-width: 480px) {
+    .drawer { width: 100%; }
+    body { padding: 1rem; }
+  }
+  @media (max-width: 360px) {
+    .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .g3 > :last-child { grid-column: 1 / -1; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Geist+Mono:wght@400..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ui-font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --num-font: "Plus Jakarta Sans", sans-serif;
+}
+body, button, input, select, textarea { font-family: var(--ui-font); }
+.val, .bnum, .day-mark, #used-out, #hours-out {
+  font-family: var(--num-font); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* MAN orange / AUTO green lifted from the operator cockpit so the two surfaces
+   read the same; FABLE violet — distinct from both and from the link blue. */
+/* Segmented MAN|AUTO — both labels visible, one thumb slides and crossfades
+   orange -> green. Ported from the operator cockpit so the two surfaces match.
+   A single label-swapping button gave no clue what pressing it would do. */
+.seg { position: relative; display: inline-flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  background: var(--bg); isolation: isolate; }
+.seg-thumb { position: absolute; inset: 0 auto 0 0; width: 50%; z-index: 0;
+  border-radius: 5px; background: #f0883e;
+  transition: transform .3s cubic-bezier(.5,1.2,.4,1), background-color .26s ease; }
+.seg[data-mode="auto"] .seg-thumb { transform: translateX(100%); background: #3fb950; }
+.seg-btn { position: relative; z-index: 1; background: none; border: none; cursor: pointer;
+  font: 700 0.5rem/1 var(--num-font); letter-spacing: .04em;
+  padding: 3px 6px; color: var(--text-secondary); transition: color .24s ease; }
+.seg[data-mode="man"]  .seg-btn[data-mode="man"]  { color: #2a1402; }
+.seg[data-mode="auto"] .seg-btn[data-mode="auto"] { color: #062611; }
+
+.toggle-btn {
+  font: 700 0.5rem/1 var(--num-font); letter-spacing: .04em;
+  padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text-secondary); cursor: pointer;
+  transition: background .22s ease, color .22s ease, border-color .22s ease;
+}
+#fable-btn.on { background: #a371f7; border-color: #a371f7; color: #1a0b2e; }
+#fable-btn:disabled { opacity: .35; cursor: default; }
+
+/* Live feed drives everything, so the controls stay on screen but stop being
+   inputs: the feed owns these values and a drag would only fight it. Kept
+   visible rather than hidden so the numbers still read at a glance. */
+body.live-mode #used-row,
+body.live-mode #hours-row,
+body.live-mode #plan-btn,
+body.live-mode #mode-seg { opacity: .55; pointer-events: none; }
+body.live-mode #live-plan { display: inline-block; }
+#live-plan { display: none; font-size: 11px; color: var(--text-secondary);
+  font-weight: 700; letter-spacing: .04em; }
+
+/* FABLE sits next to the MAN/AUTO switch, so they share a height and the
+   switch is the one that should carry the weight (Jeff 2026-08-06). */
+.seg { min-height: 22px; }
+.seg-btn { font-size: 0.6rem; padding: 4px 11px; }
+#fable-btn { font-size: 0.46rem; padding: 2px 5px; min-height: 22px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="title-row">
+  <h1>Claude Max Usage Calculator <span style="font-size:11px;color:var(--text-secondary);font-weight:600;letter-spacing:.02em">v1.1</span></h1>
+  <div class="right">
+    <span class="copy-fb" id="copy-fb">copied</span>
+    <button class="icon-btn" id="copy-btn" title="Copy status (C)" onclick="copyStatus()" aria-label="Copy status">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+    <button class="icon-btn" id="settings-btn" title="Settings (S)" onclick="openSettings()" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span class="reset-badge" id="reset-badge">resets in —</span>
+  </div>
+</div>
+
+<div class="controls-card">
+  <div class="row-ctrl" id="used-row">
+    <label>usage so far</label>
+    <input type="range" min="0" max="100" value="13" step="1" id="used">
+    <span class="val" id="used-out">13%</span>
+  </div>
+  <div class="row-ctrl" id="hours-row" style="margin-bottom:3px">
+    <label>hours elapsed</label>
+    <input type="range" min="0" max="168" value="23" step="0.1" id="hours">
+    <span class="val" id="hours-out">23.0h</span>
+  </div>
+  <div class="day-marks">
+    <span class="day-mark">Th</span><span class="day-mark">F</span><span class="day-mark">S</span>
+    <span class="day-mark">Su</span><span class="day-mark">M</span><span class="day-mark">Tu</span>
+    <span class="day-mark">W</span><span class="day-mark">Th</span>
+  </div>
+  <div class="auto-row" style="justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="auto-lbl">time sync</span>
+      <span class="seg" id="mode-seg" data-mode="man">
+        <span class="seg-thumb"></span>
+        <button class="seg-btn" data-mode="man"  onclick="setAuto(false)">MAN</button>
+        <button class="seg-btn" data-mode="auto" onclick="setAuto(true)">AUTO</button>
+      </span>
+      <span id="live-plan">—</span>
+      <!-- Measures against the per-model Fable quota instead of the all-model
+           weekly one. Only meaningful with a live feed, so it disables itself
+           without one (Jeff 2026-08-02). -->
+      <button class="toggle-btn" id="fable-btn" onclick="toggleFable()" disabled>FABLE</button>
+      <span class="auto-lbl" id="auto-hint"></span>
+      <span id="ext-snap-hint" class="ext-snap-hint" style="display:none"></span>
+    </div>
+  </div>
+</div>
+
+<div id="status-pill" class="status-pill">
+  <div class="dot" id="status-dot"></div>
+  <span id="status-text"></span>
+</div>
+
+<div class="card resume-card" id="resume-card">
+  <div class="metric-label">resume-in</div>
+  <div class="metric-val c-warning" id="resume-val">—</div>
+  <div class="metric-sub" id="resume-sub">pause this long to catch linear pace</div>
+</div>
+
+<div class="g3" style="margin-bottom:8px">
+  <div class="card">
+    <div class="metric-label">time elapsed</div>
+    <div class="metric-val" id="m-time">—</div>
+    <div class="metric-sub" id="m-time-sub">—</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">usage</div>
+    <div class="metric-val" id="m-used">—</div>
+    <div class="metric-sub" id="m-used-sub">—</div>
+  </div>
+  <div class="card" id="proj-card">
+    <div class="metric-label">quota used</div>
+    <div class="metric-val" id="m-proj">—</div>
+    <div class="metric-sub" id="m-proj-sub">linear extrapolation</div>
+  </div>
+</div>
+
+<div class="section-head">pace</div>
+<div class="card" style="margin-bottom:8px">
+  <div class="hdr"><span class="hdr-title">weekly limit</span><span id="p-used-pct" style="font-size:11px;color:var(--text-secondary)">—</span></div>
+  <div class="bar-bg"><div class="bar-fill" id="bar-used" style="background:var(--blue)"></div></div>
+  <div class="hdr" style="margin-top:9px"><span class="hdr-title">time elapsed</span><span id="p-time-pct" style="font-size:11px;color:var(--text-secondary)">—</span></div>
+  <div class="bar-bg"><div class="bar-fill" id="bar-time" style="background:rgba(180,180,180,.45)"></div></div>
+  <div class="delta-line" id="delta-line"></div>
+
+  <div class="daybars-wrap">
+    <div class="daybars-hdr">
+      <span class="lbl">daily burn</span>
+      <span class="sub">bar = day's usage · line = daily pace</span>
+    </div>
+    <div class="daybars" id="daybars"></div>
+    <div class="daybars-empty" id="daybars-empty" style="display:none">Move the usage slider to start tracking daily burn.</div>
+  </div>
+</div>
+
+<div class="g3" style="margin-bottom:8px">
+  <div class="card" id="card-surplus">
+    <div class="metric-label" id="surplus-label">surplus</div>
+    <div class="metric-val" id="surplus">—</div>
+    <div class="metric-sub" id="surplus-sub">vs. linear</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">daily budget</div>
+    <div class="metric-val" id="daily-budget">—</div>
+    <div class="metric-sub" id="daily-budget-sub">per remaining day</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">hours left</div>
+    <div class="metric-val" id="hrs-to-limit">—</div>
+    <div class="metric-sub" id="hrs-to-limit-sub">at current burn</div>
+  </div>
+</div>
+
+<div class="tok-section-head" style="justify-content:flex-start;gap:8px">
+  <span>estimated tokens</span>
+  <button class="toggle-btn" id="plan-btn" onclick="togglePlan()">20x</button>
+</div>
+
+<div class="g2" style="margin-bottom:8px">
+  <div class="card">
+    <div class="metric-label">used</div>
+    <div class="metric-val" id="tok-used">—</div>
+    <div class="metric-sub" id="tok-used-sub">of ~250M total</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">remaining</div>
+    <div class="metric-val" id="tok-left">—</div>
+    <div class="metric-sub" id="tok-burn-sub">—</div>
+  </div>
+</div>
+<div class="g2">
+  <div class="card" id="card-burn">
+    <div class="metric-label">burn rate</div>
+    <div class="burn-split">
+      <div class="col">
+        <div class="bval" id="burn-avg">—</div>
+        <div class="blbl">avg</div>
+        <div class="bsub">since reset</div>
+      </div>
+      <div class="col second">
+        <div class="bval" id="burn-recent">—</div>
+        <div class="blbl">recent</div>
+        <div class="bsub" id="burn-recent-sub">last 2h</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="metric-label">daily equivalent</div>
+    <div class="metric-val" id="daily-tok">—</div>
+    <div class="metric-sub">MTok / day</div>
+  </div>
+</div>
+<p class="disclaimer">Anthropic does not publish token counts for claude.ai plans. ~250M/week is a reverse-engineered community estimate for Max 20x — this figure is for reference only. Reset time defaults to Thursday 12pm PT but may shift when Anthropic releases new models; adjust in settings.</p>
+
+</div>
+
+<!-- Settings drawer -->
+<div class="scrim" id="scrim" onclick="closeSettings()"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-labelledby="drawer-title">
+  <div class="drawer-header">
+    <h2 id="drawer-title">
+      <span>settings</span>
+      <button class="drawer-close-btn" onclick="closeSettings()" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </h2>
+  </div>
+
+  <div class="drawer-body">
+    <div class="drawer-section" id="reset-cycle-section">
+      <h3>reset cycle</h3>
+      <div class="drawer-row">
+        <label for="s-day">day</label>
+        <select id="s-day"></select>
+      </div>
+      <div class="drawer-row">
+        <label for="s-hour">hour</label>
+        <input type="number" id="s-hour" min="0" max="23" step="1">
+      </div>
+      <div class="drawer-row">
+        <label for="s-tz">timezone</label>
+        <select id="s-tz"></select>
+      </div>
+      <div class="hint" id="s-reset-hint">—</div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>plan tokens (MTok / week)</h3>
+      <div class="drawer-row">
+        <label for="s-t20">20x</label>
+        <input type="number" id="s-t20" min="0" step="1">
+      </div>
+      <div class="drawer-row">
+        <label for="s-t5">5x</label>
+        <input type="number" id="s-t5" min="0" step="0.5">
+      </div>
+      <div class="hint">Community-estimated weekly totals. Override if Anthropic publishes or you've measured your own limit.</div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>history</h3>
+      <div class="drawer-row">
+        <label for="s-hist">track</label>
+        <input type="checkbox" id="s-hist">
+        <span class="auto-lbl" id="s-hist-count">0 entries</span>
+      </div>
+      <div class="drawer-row">
+        <button class="drawer-btn danger" onclick="clearHistoryNow()">clear history</button>
+      </div>
+      <div class="hint">Usage snapshots are stored in localStorage and auto-clear each reset.</div>
+    </div>
+
+    <div class="drawer-section">
+      <button class="drawer-btn" onclick="resetSettings()">reset to defaults</button>
+    </div>
+
+    <div class="drawer-footer">
+      Shortcuts: ←/→ usage, A auto, P plan, S settings, C copy, Esc close.
+    </div>
+  </div>
+</aside>
+
+<script>
+const CYCLE = 168;
+const DEFAULT_SETTINGS = {
+  resetDay: 4,        // 0=Sun..6=Sat, 4=Thu
+  resetHour: 12,      // 0-23 in resetTz
+  resetTz: 'America/Los_Angeles',
+  tokens20x: 250,
+  tokens5x: 62.5,
+  historyEnabled: true,
+};
+let settings = Object.assign({}, DEFAULT_SETTINGS);
+let planMode = '20x';
+let autoMode = false, autoTick = null;
+let _usedDragging = false;
+let _extSnapAt = 0;
+let _lastMeta = 0;
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// ---------- Settings ----------
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('cmuc_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      settings = Object.assign({}, DEFAULT_SETTINGS, parsed);
+    }
+  } catch(e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem('cmuc_settings', JSON.stringify(settings)); } catch(e) {}
+}
+function fillSelect(sel, values, labels) {
+  while (sel.firstChild) sel.removeChild(sel.firstChild);
+  for (let i = 0; i < values.length; i++) {
+    const opt = document.createElement('option');
+    opt.value = values[i];
+    opt.textContent = labels ? labels[i] : values[i];
+    sel.appendChild(opt);
+  }
+}
+function populateDrawer() {
+  const daySel = document.getElementById('s-day');
+  fillSelect(daySel, [0,1,2,3,4,5,6], DAYS_LONG);
+  daySel.value = settings.resetDay;
+
+  const tzSel = document.getElementById('s-tz');
+  const zones = [
+    'America/Los_Angeles','America/Denver','America/Chicago','America/New_York',
+    'America/Toronto','America/Vancouver','UTC','Europe/London','Europe/Berlin',
+    'Europe/Paris','Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo',
+    'Asia/Shanghai','Asia/Hong_Kong','Australia/Sydney',
+  ];
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (localTz && zones.indexOf(localTz) === -1) zones.push(localTz);
+  fillSelect(tzSel, zones);
+  tzSel.value = settings.resetTz;
+
+  document.getElementById('s-hour').value = settings.resetHour;
+  document.getElementById('s-t20').value = settings.tokens20x;
+  document.getElementById('s-t5').value = settings.tokens5x;
+  document.getElementById('s-hist').checked = settings.historyEnabled;
+  updateHistCount();
+  updateResetHint();
+}
+function onSettingChange() {
+  const day = parseInt(document.getElementById('s-day').value, 10);
+  const hour = parseInt(document.getElementById('s-hour').value, 10);
+  const tz = document.getElementById('s-tz').value;
+  const t20 = parseFloat(document.getElementById('s-t20').value);
+  const t5 = parseFloat(document.getElementById('s-t5').value);
+  const hist = document.getElementById('s-hist').checked;
+  if (!isNaN(day)) settings.resetDay = Math.max(0, Math.min(6, day));
+  if (!isNaN(hour)) settings.resetHour = Math.max(0, Math.min(23, hour));
+  if (tz) settings.resetTz = tz;
+  if (!isNaN(t20) && t20 > 0) settings.tokens20x = t20;
+  if (!isNaN(t5) && t5 > 0) settings.tokens5x = t5;
+  settings.historyEnabled = !!hist;
+  saveSettings();
+  updateResetHint();
+  update();
+}
+function resetSettings() {
+  settings = Object.assign({}, DEFAULT_SETTINGS);
+  saveSettings();
+  populateDrawer();
+  update();
+}
+function openSettings() {
+  document.getElementById('scrim').classList.add('on');
+  document.getElementById('drawer').classList.add('on');
+  updateHistCount();
+}
+function closeSettings() {
+  document.getElementById('scrim').classList.remove('on');
+  document.getElementById('drawer').classList.remove('on');
+}
+function updateResetHint() {
+  const start = getCycleStartDate();
+  const next = new Date(start.getTime() + CYCLE * 3600000);
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: settings.resetTz, weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  });
+  document.getElementById('s-reset-hint').textContent = 'Next reset: ' + fmt.format(next) + ' (in ' + fmtHrs(getResetHrs()) + ')';
+}
+function updateHistCount() {
+  const h = loadHistory();
+  document.getElementById('s-hist-count').textContent = h.length + ' entries';
+}
+
+// ---------- Time math (TZ-aware) ----------
+// Given a UTC instant `date` and an IANA zone name `tz`, returns the zone's
+// offset in minutes at that instant. Positive = zone ahead of UTC.
+function tzOffsetMin(date, tz) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const get = function(t) { return parseInt(parts.find(function(p) { return p.type === t; }).value, 10); };
+  let hour = get('hour'); if (hour === 24) hour = 0;
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+  return (asUtc - date.getTime()) / 60000;
+}
+
+function getCycleStartDate() {
+  // Find most recent {resetDay, resetHour} in {resetTz} that is <= now.
+  const now = new Date();
+  const tz = settings.resetTz;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    weekday: 'short', hour12: false,
+  }).formatToParts(now);
+  const get = function(t) { return parts.find(function(p) { return p.type === t; }).value; };
+  const wkShort = get('weekday');
+  const wkIdx = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(wkShort);
+  const yy = parseInt(get('year'), 10), mm = parseInt(get('month'), 10), dd = parseInt(get('day'), 10);
+  let hh = parseInt(get('hour'), 10); if (hh === 24) hh = 0;
+  const mi = parseInt(get('minute'), 10);
+
+  let dback = (wkIdx - settings.resetDay + 7) % 7;
+  // If today IS reset day but we haven't yet hit reset hour, go back a full week.
+  if (dback === 0 && hh < settings.resetHour) dback = 7;
+
+  // Build UTC instant that represents (yy,mm,dd-dback) at resetHour:00 in target TZ.
+  const tentative = new Date(Date.UTC(yy, mm - 1, dd - dback, settings.resetHour, 0, 0, 0));
+  const offMin = tzOffsetMin(tentative, tz);
+  let startUtc = tentative.getTime() - offMin * 60000;
+  // DST / offset slippage guard: ensure we didn't overshoot now.
+  if (startUtc > now.getTime()) startUtc -= 7 * 24 * 3600000;
+  return new Date(startUtc);
+}
+
+function getAutoHours() {
+  const now = new Date();
+  return Math.min(CYCLE, Math.max(0, (now - getCycleStartDate()) / 3600000));
+}
+// The live feed reports the exact reset instant, so when it is up that wins
+// over the configured day/hour/tz guess (which was drifting a whole cycle out).
+let liveResetsAt = null;
+function getResetHrs() {
+  // Not gated on liveMode: a reset instant learned from a live poll stays the
+  // true one after the feed drops, and the countdown keeps running off it.
+  if (liveResetsAt) {
+    const t = Date.parse(liveResetsAt);
+    if (isFinite(t)) return Math.max(0, (t - Date.now()) / 3600000);
+  }
+  const nextReset = new Date(getCycleStartDate().getTime() + CYCLE * 3600000);
+  return Math.max(0, (nextReset - new Date()) / 3600000);
+}
+function fmtHrs(h) {
+  const d = Math.floor(h / 24), hh = Math.floor(h % 24);
+  return d > 0 ? d + 'd ' + hh + 'h' : hh + 'h';
+}
+function fmtClockHint() {
+  const now = new Date();
+  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' ' + DAYS_SHORT[now.getDay()];
+}
+
+// ---------- History ----------
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem('cmuc_history');
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) { return []; }
+}
+function saveHistoryArr(arr) {
+  try { localStorage.setItem('cmuc_history', JSON.stringify(arr)); } catch(e) {}
+}
+function pruneHistory(arr) {
+  const cycleStart = getCycleStartDate().getTime();
+  let out = arr.filter(function(e) { return e.ts >= cycleStart; });
+  if (out.length > 500) out = out.slice(out.length - 500);
+  return out;
+}
+// While actively dragging, still log — but throttled — so a fast slider move
+// leaves a trail of real intermediate points instead of one big jump from the
+// last settled value straight to wherever the drag ends.
+let _lastDragLogTs = 0;
+const DRAG_LOG_THROTTLE_MS = 300;
+function logUsage(used, hrs) {
+  if (!settings.historyEnabled) return;
+  const now = Date.now();
+  if (_usedDragging) {
+    if (now - _lastDragLogTs < DRAG_LOG_THROTTLE_MS) return;
+    _lastDragLogTs = now;
+  }
+  const arr = pruneHistory(loadHistory());
+  const last = arr[arr.length - 1];
+  if (!last || last.used !== used || (now - last.ts) > 10 * 60 * 1000) {
+    arr.push({ ts: now, used: used, hrs: hrs });
+    saveHistoryArr(arr);
+  } else if (arr.length !== loadHistory().length) {
+    // Pruning removed cross-cycle entries; persist the pruned version.
+    saveHistoryArr(arr);
+  }
+}
+function clearHistoryNow() {
+  try { localStorage.removeItem('cmuc_history'); } catch(e) {}
+  updateHistCount();
+  renderDayBars();
+}
+function recentBurn(hoursBack, TOK) {
+  if (!settings.historyEnabled) return null;
+  const arr = pruneHistory(loadHistory());
+  if (arr.length < 2) return null;
+  const cutoff = Date.now() - hoursBack * 3600000;
+  let startIdx = 0;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].ts <= cutoff) { startIdx = i; break; }
+    if (i === 0) startIdx = 0;
+  }
+  const a = arr[startIdx], b = arr[arr.length - 1];
+  const dtHr = (b.ts - a.ts) / 3600000;
+  if (dtHr < 0.05) return null;
+  const dUsed = b.used - a.used;
+  return (TOK * dUsed / 100) / dtHr;
+}
+// Bucket history into one delta-usage% value per day-of-cycle. Correct by
+// construction: usage% is monotonic within a cycle and is exactly 0 at
+// cycleStart, so each bucket is just (usage at day-end − usage at day-start)
+// read off the nearest logged point at-or-before each boundary. No coordinate
+// transforms, no curve fitting — the old SVG sparkline's bug surface.
+function usageAtTs(pts, cycleStart, ts) {
+  if (ts <= cycleStart) return 0;
+  let v = null;
+  for (let i = 0; i < pts.length; i++) {
+    if (pts[i].ts <= ts) v = pts[i].used; else break;
+  }
+  return v; // null = no sample at or before ts yet (unknown, not zero)
+}
+function dailyUsageBuckets() {
+  const cycleStart = getCycleStartDate().getTime();
+  const cycleEnd = cycleStart + CYCLE * 3600000;
+  const nowTs = Math.min(Date.now(), cycleEnd);
+  const currentUsed = +document.getElementById('used').value;
+
+  const pts = pruneHistory(loadHistory()).slice();
+  const last = pts[pts.length - 1];
+  if (!last || last.ts < nowTs) pts.push({ ts: nowTs, used: currentUsed });
+
+  const dayMs = 24 * 3600000;
+  const nowDay = Math.min(6, Math.floor((nowTs - cycleStart) / dayMs));
+  const buckets = [];
+  for (let d = 0; d < 7; d++) {
+    const startTs = cycleStart + d * dayMs;
+    if (startTs > nowTs) { buckets.push({ day: d, hasData: false }); continue; }
+    const endTs = Math.min(startTs + dayMs, nowTs);
+    const startVal = usageAtTs(pts, cycleStart, startTs);
+    const endVal = usageAtTs(pts, cycleStart, endTs);
+    if (startVal === null || endVal === null) { buckets.push({ day: d, hasData: false }); continue; }
+    buckets.push({ day: d, hasData: true, delta: Math.max(0, endVal - startVal), isToday: d === nowDay });
+  }
+  return buckets;
+}
+function colorVarFor(v, lo, hi) {
+  const c = cls(v, lo, hi);
+  return c === 'success' ? 'var(--text-success)' : c === 'warning' ? 'var(--text-warning)' : 'var(--text-danger)';
+}
+function renderDayBars() {
+  const wrap = document.getElementById('daybars');
+  const empty = document.getElementById('daybars-empty');
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+  if (!settings.historyEnabled) {
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'History tracking disabled.';
+    return;
+  }
+  const buckets = dailyUsageBuckets();
+  if (!buckets.some(function(b) { return b.hasData; })) {
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    // No slider to move in live mode; the feed fills this in on its own.
+    empty.textContent = liveMode
+      ? 'Collecting daily burn from the live feed.'
+      : 'Move the usage slider to start tracking daily burn.';
+    return;
+  }
+  wrap.style.display = 'flex';
+  empty.style.display = 'none';
+
+  const budgetPerDay = 100 / 7;
+  const scaleMax = budgetPerDay * 2; // bar reaches full height at 2x daily budget
+
+  const ref = document.createElement('div');
+  ref.className = 'pace-ref';
+  ref.style.bottom = Math.min(100, (budgetPerDay / scaleMax) * 100).toFixed(1) + '%';
+  wrap.appendChild(ref);
+
+  buckets.forEach(function(b) {
+    const col = document.createElement('div');
+    col.className = 'daybar-col';
+    const track = document.createElement('div');
+    track.className = 'daybar-track';
+    const fill = document.createElement('div');
+    if (b.hasData) {
+      fill.className = 'daybar-fill' + (b.isToday ? ' today' : '');
+      fill.style.height = Math.min(100, (b.delta / scaleMax) * 100).toFixed(1) + '%';
+      fill.style.background = colorVarFor(b.delta, budgetPerDay, budgetPerDay * 1.5);
+      col.title = DAYS_LONG[(settings.resetDay + b.day) % 7] + ': ' + b.delta.toFixed(1) + '% used' +
+        (b.isToday ? ' (so far today)' : '');
+    } else {
+      fill.className = 'daybar-fill';
+      fill.style.height = '0%';
+      col.title = 'No data';
+    }
+    track.appendChild(fill);
+    col.appendChild(track);
+    const lbl = document.createElement('div');
+    lbl.className = 'daybar-lbl' + (b.isToday ? ' active' : '');
+    lbl.textContent = DAY_MARKS_SHORT[(settings.resetDay + b.day) % 7];
+    col.appendChild(lbl);
+    wrap.appendChild(col);
+  });
+}
+
+// ---------- State (used/hrs/plan/auto) ----------
+function saveState() {
+  try {
+    localStorage.setItem('cmuc_used', document.getElementById('used').value);
+    localStorage.setItem('cmuc_hrs',  document.getElementById('hours').value);
+    localStorage.setItem('cmuc_plan', planMode);
+  } catch(e) {}
+  syncUrlHash();
+}
+function loadState() {
+  let wantAuto = false;
+  try {
+    const u = localStorage.getItem('cmuc_used');
+    const h = localStorage.getItem('cmuc_hrs');
+    const p = localStorage.getItem('cmuc_plan');
+    if (u !== null) document.getElementById('used').value = u;
+    if (h !== null) document.getElementById('hours').value = h;
+    if (p === '20x' || p === '5x') planMode = p;
+    wantAuto = localStorage.getItem('cmuc_auto') === '1';
+  } catch(e) {}
+  return wantAuto;
+}
+
+// ---------- URL hash sync ----------
+function parseHash() {
+  const h = window.location.hash.replace(/^#/, '');
+  if (!h) return {};
+  const out = {};
+  h.split('&').forEach(function(pair) {
+    const kv = pair.split('=');
+    if (kv.length === 2) out[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
+  });
+  return out;
+}
+function applyHash() {
+  const p = parseHash();
+  if (p.u !== undefined) {
+    const v = Math.max(0, Math.min(100, parseInt(p.u, 10)));
+    if (!isNaN(v)) document.getElementById('used').value = v;
+  }
+  if (p.h !== undefined) {
+    const v = Math.max(0, Math.min(CYCLE, parseFloat(p.h)));
+    if (!isNaN(v)) document.getElementById('hours').value = v;
+  }
+  if (p.p === '20x' || p.p === '5x') planMode = p.p;
+  return p.a === '1';
+}
+function syncUrlHash() {
+  const used = document.getElementById('used').value;
+  const hrs = document.getElementById('hours').value;
+  const params = ['u=' + used, 'p=' + planMode];
+  if (autoMode) params.push('a=1');
+  else params.push('h=' + hrs);
+  try { history.replaceState(null, '', '#' + params.join('&')); } catch(e) {}
+}
+
+// ---------- Misc UI ----------
+// Single-letter-ish day abbreviations indexed by getDay() (0=Sun).
+// Su/M/Tu/W/Th/F/S — matches the original hardcoded axis style.
+const DAY_MARKS_SHORT = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'S'];
+
+// Render the 8 day ticks under the hours slider, STARTING from the configured
+// reset day (not a hardcoded Thursday). The axis spans one 168h cycle, so the
+// 8th tick is the reset day again (next reset). Previously these labels were
+// baked into the HTML as "Th F S Su M Tu W Th" — correct only while reset was
+// Thursday. Once the reset day became user-configurable, the labels drifted
+// out of sync with the actual cycle (the highlight tracked resetDay but the
+// letters didn't). Generating them from settings.resetDay keeps them aligned.
+function renderDayMarks() {
+  const marks = document.querySelectorAll('.day-mark');
+  marks.forEach(function(m, i) {
+    m.textContent = DAY_MARKS_SHORT[(settings.resetDay + i) % 7];
+  });
+}
+
+function getDayMarkIdx(hrs) {
+  const t = new Date(getCycleStartDate().getTime() + hrs * 3600000);
+  const day = t.getDay();
+  let idx = (day - settings.resetDay + 7) % 7;
+  if (day === settings.resetDay && hrs > 84) idx = 7;
+  return idx;
+}
+
+function applyPlanBtn() {
+  const btn = document.getElementById('plan-btn');
+  btn.textContent = planMode;
+  // In live mode the toggle is hidden, so the plan still has to read somewhere.
+  const lp = document.getElementById('live-plan');
+  if (lp) lp.textContent = planMode;
+  if (planMode === '20x') {
+    btn.style.background = '#E8830A'; btn.style.borderColor = '#E8830A'; btn.style.color = '#fff';
+  } else {
+    btn.style.background = 'var(--text-success)'; btn.style.borderColor = 'var(--text-success)'; btn.style.color = 'var(--bg)';
+  }
+}
+function togglePlan() {
+  planMode = planMode === '20x' ? '5x' : '20x';
+  applyPlanBtn();
+  saveState();
+  update();
+}
+// AUTO drives BOTH sliders (Jeff 2026-08-02: "toggle both auto-time and
+// auto-percentage at the same time"). With a live endpoint configured it is the
+// source of truth for the percentage AND the elapsed time — the reset instant
+// comes back with the reading, so hours are derived rather than guessed. With
+// no endpoint (every public visitor) it degrades to the original clock-only
+// behaviour and the usage slider stays manual.
+function applyAutoUI() {
+  const seg = document.getElementById('mode-seg');
+  const hrs = document.getElementById('hours');
+  const usd = document.getElementById('used');
+  if (seg) seg.dataset.mode = autoMode ? 'auto' : 'man';
+  hrs.disabled = autoMode;
+  // Gate on liveMode, not liveUrl: the URL now always has a default value, so
+  // only a fetch that actually succeeded may lock the manual controls.
+  usd.disabled = autoMode && liveMode;
+  const fb = document.getElementById('fable-btn');
+  if (fb) {
+    fb.disabled = !autoMode || !liveMode;
+    fb.classList.toggle('on', fableMode);
+  }
+  // Live feed present: the sliders are no longer inputs, they are just where
+  // the fetched numbers live, so the whole manual apparatus comes off screen.
+  document.body.classList.toggle('live-mode', liveMode);
+}
+
+// Try the endpoint first; a feed that is missing or has gone away falls back to
+// the clock rather than freezing on the last reading (Jeff 2026-08-06: a dead
+// feed used to stall time sync entirely instead of degrading).
+//
+// One miss is not an outage. Dropping out of live mode on a single failed poll
+// made the FABLE button — which is gated on liveMode — grey itself out on any
+// blip, and since a backgrounded tab has its 30s timer throttled to about a
+// minute, it then stayed grey long enough to look permanent (Jeff 2026-08-07:
+// "the fable button no longer works"). Two consecutive misses is a real outage.
+let liveMisses = 0;
+function autoRefresh() {
+  return pollLive().then(function(ok) {
+    if (ok) { liveMisses = 0; return; }
+    liveMisses++;
+    // Below the outage threshold, leave the last live reading alone. Falling
+    // through here on a single blip overwrote a correct 56.5h with the
+    // configured cycle's 12.5h while the page still said "live · synced" — the
+    // 44h jump that shows up as "618% quota used, 14h left" (Jeff 2026-08-06).
+    if (liveMisses < 2 && liveMode) return;
+    if (liveMode) { liveMode = false; applyAutoUI(); }
+    updateExtHint();                                     // say why, rather than going quiet
+    animateSlider(fallbackHours());
+    update();
+  });
+}
+
+// A dead feed still leaves the reset instant from the last good poll, and the
+// clock keeps running — so elapsed stays correct even with no fresh percentage.
+// The configured cycle is only right for someone who never had a feed; here it
+// is whatever was last dialled in by hand, which is 44h adrift.
+function fallbackHours() {
+  if (liveResetsAt) {
+    const el = hoursElapsedFrom(liveResetsAt);
+    if (el !== null) return el;
+  }
+  return getAutoHours();
+}
+
+// A backgrounded tab's timers are throttled, so coming back to this page could
+// mean looking at a reading several minutes old with no poll due. Refresh on
+// the way in instead of waiting for the next tick.
+let _lastPollAt = 0;
+function pollNow() {
+  if (!autoMode) return;
+  if (Date.now() - _lastPollAt < 5000) return;   // focus + visibility both fire on a tab switch
+  _lastPollAt = Date.now();
+  autoRefresh();
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') pollNow();
+});
+window.addEventListener('focus', pollNow);
+
+function setAuto(want) {
+  if (autoMode === want) return;
+  toggleAuto();
+}
+
+function toggleAuto() {
+  autoMode = !autoMode;
+  try { localStorage.setItem('cmuc_auto', autoMode ? '1' : '0'); } catch(e) {}
+  applyAutoUI();
+  clearInterval(autoTick);
+  if (autoMode) {
+    autoRefresh();
+    autoTick = setInterval(autoRefresh, 30000);
+  } else {
+    update();
+  }
+  syncUrlHash();
+}
+
+function toggleFable() {
+  if (!autoMode || !liveMode) return;
+  fableMode = !fableMode;
+  try { localStorage.setItem('cmuc_fable', fableMode ? '1' : '0'); } catch(e) {}
+  applyAutoUI();
+  pollLive();
+}
+
+function cls(v, lo, hi) { return v <= lo ? 'success' : v <= hi ? 'warning' : 'danger'; }
+function tint(v, lo, hi) { return 't-' + cls(v, lo, hi); }
+function colorCls(v, lo, hi) { return 'c-' + cls(v, lo, hi); }
+function setCard(id, tCls, valId, cCls) {
+  document.getElementById(id).className = 'card ' + tCls;
+  if (valId) document.getElementById(valId).className = 'metric-val ' + cCls;
+}
+
+const _rs = {};     // id -> current rAF handle
+const _rsTok = {};  // id -> generation token. Steps compare their token to this before mutating.
+function rollingSet(id, newText) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === newText) return;
+  if (_rs[id]) cancelAnimationFrame(_rs[id]);
+  const tok = (_rsTok[id] || 0) + 1;
+  _rsTok[id] = tok;
+  const numNew = parseFloat(newText), numOld = parseFloat(el.textContent);
+  if (!isNaN(numNew) && !isNaN(numOld) && el.textContent !== '—' && newText !== '—') {
+    const decimals = (newText.split('.')[1] || '').length;
+    const suffix = newText.replace(/^[\d.+-]+/, '');
+    const start = performance.now(), from = numOld, to = numNew;
+    function step(ts) {
+      if (_rsTok[id] !== tok) return; // superseded by a newer call; drop this frame.
+      const t = Math.min((ts - start) / 350, 1);
+      const e = 1 - Math.pow(1 - t, 3);
+      el.textContent = (from + (to - from) * e).toFixed(Math.min(decimals, 2)) + suffix;
+      if (t < 1) { _rs[id] = requestAnimationFrame(step); }
+      else { el.textContent = newText; delete _rs[id]; }
+    }
+    _rs[id] = requestAnimationFrame(step);
+  } else {
+    el.textContent = newText;
+  }
+}
+
+let _sliderAnim = null;
+function animateSlider(target) {
+  const sl = document.getElementById('hours');
+  const from = +sl.value, to = Math.min(CYCLE, Math.max(0, target));
+  if (Math.abs(to - from) < 0.01) return;
+  if (_sliderAnim) cancelAnimationFrame(_sliderAnim);
+  const start = performance.now(), dur = 900;
+  function step(ts) {
+    const t = Math.min((ts - start) / dur, 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    const val = from + (to - from) * e;
+    sl.value = val.toFixed(3);
+    document.getElementById('hours-out').textContent = val.toFixed(1) + 'h';
+    if (t < 1) { _sliderAnim = requestAnimationFrame(step); }
+    else { sl.value = to; document.getElementById('hours-out').textContent = to.toFixed(1) + 'h'; _sliderAnim = null; update(); }
+  }
+  _sliderAnim = requestAnimationFrame(step);
+}
+
+function setDeltaLine(over, dAbs) {
+  const el = document.getElementById('delta-line');
+  while (el.firstChild) el.removeChild(el.firstChild);
+  if (dAbs === null) return;
+  const arrow = document.createElement('span');
+  arrow.className = 'delta-arrow ' + (over ? 'up' : 'down');
+  arrow.textContent = over ? '▲' : '▼';
+  el.appendChild(arrow);
+  el.appendChild(document.createTextNode(' ' + dAbs + '% ' + (over ? 'over' : 'under') + ' quota'));
+}
+
+let _lastSnapshot = {};
+
+function maybeUpdateMeta() {
+  const now = Date.now();
+  if (now - _lastMeta > 60000) {
+    _lastMeta = now;
+    updateHistCount();
+    updateResetHint();
+  }
+}
+function updateExtHint() {
+  const el = document.getElementById('ext-snap-hint');
+  if (!el) return;
+  // Name the broken feed. Without this the page looks identical whether the
+  // endpoint 404s, the host is off the tailnet, or there was never a feed.
+  if (!liveMode && liveErr) {
+    el.textContent = 'no live feed · ' + liveErr;
+    el.style.display = '';
+    return;
+  }
+  if (!_extSnapAt) { el.style.display = 'none'; return; }
+  const ageSec = Math.floor((Date.now() - _extSnapAt) / 1000);
+  const ageStr = ageSec < 60 ? 'just now' : Math.floor(ageSec / 60) + 'm ago';
+  const src = liveMode
+    ? (fableStale ? 'live · no Fable window, showing all-model · synced ' : 'live · synced ')
+    : (_snapSrc === 'ext' ? 'via extension · synced ' : 'last reading ');
+  el.textContent = src + ageStr;
+  el.style.display = '';
+}
+function update() {
+  const TOK = planMode === '20x' ? settings.tokens20x : settings.tokens5x;
+  const used = +document.getElementById('used').value;
+  const hrs  = +document.getElementById('hours').value;
+
+  document.getElementById('used-out').textContent  = used + '%';
+  document.getElementById('hours-out').textContent = hrs.toFixed(1) + 'h';
+
+  const pctTime = hrs / CYCLE * 100;
+  const remaining = CYCLE - hrs;
+  const proj = hrs > 0 ? (used / hrs * CYCLE) : 0;
+  const surplus = pctTime - used;
+  const remainDays = remaining / 24;
+
+  document.getElementById('reset-badge').textContent = 'resets in ' + fmtHrs(getResetHrs());
+
+  rollingSet('m-time', pctTime.toFixed(2) + '%');
+  const remD = Math.floor(remaining / 24), remH = Math.floor(remaining % 24);
+  document.getElementById('m-time-sub').textContent = remD > 0 ? remD + 'd ' + remH + 'h remaining' : remaining.toFixed(1) + 'h remaining';
+  document.getElementById('m-used').textContent = used + '%';
+  document.getElementById('m-used-sub').textContent = (100 - used) + '% left';
+  rollingSet('m-proj', hrs > 0 ? proj.toFixed(2) + '%' : '—');
+  document.getElementById('tok-used-sub').textContent = 'of ~' + TOK + ' MTok total';
+
+  let projLabel, statusText, bgColor, textColor, dotColor, statusWeight;
+  if (proj <= 90)       { projLabel = 'comfortably under';  statusText = 'on track — running under pace';         bgColor = 'var(--bg-success)'; textColor = 'var(--text-success)'; dotColor = '#1D9E75'; statusWeight = 700; }
+  else if (proj <= 100) { projLabel = 'cutting it close';   statusText = 'marginal — watch for heavy sessions';   bgColor = 'var(--bg-warning)'; textColor = 'var(--text-warning)'; dotColor = '#BA7517'; statusWeight = 700; }
+  else                  { projLabel = 'robbed by API';       statusText = 'over pace — projected to exceed limit'; bgColor = 'var(--bg-danger)';  textColor = 'var(--text-danger)';  dotColor = '#E24B4A'; statusWeight = 500; }
+
+  document.getElementById('m-proj-sub').textContent = hrs > 0 ? projLabel : 'no data yet';
+  const pCls = hrs > 0 ? cls(proj, 90, 100) : '';
+  document.getElementById('proj-card').className = 'card' + (pCls ? ' t-' + pCls : '');
+  document.getElementById('m-proj').className    = 'metric-val' + (pCls ? ' c-' + pCls : '');
+
+  const sp = document.getElementById('status-pill');
+  sp.style.background = bgColor; sp.style.color = textColor; sp.style.fontWeight = statusWeight;
+  document.getElementById('status-text').textContent = statusText;
+  document.getElementById('status-dot').style.background = dotColor;
+
+  document.getElementById('bar-used').style.width = Math.min(used, 100) + '%';
+  document.getElementById('bar-time').style.width = Math.min(pctTime, 100).toFixed(1) + '%';
+  document.getElementById('p-used-pct').textContent = used + '%';
+  document.getElementById('p-time-pct').textContent = pctTime.toFixed(1) + '%';
+
+  if (hrs > 0) {
+    const over = used > pctTime;
+    setDeltaLine(over, Math.abs(pctTime - used).toFixed(1));
+  } else {
+    setDeltaLine(false, null);
+  }
+
+  if (hrs > 0) {
+    document.getElementById('surplus-label').textContent = surplus >= 0 ? 'surplus' : 'deficit';
+    document.getElementById('surplus').textContent = (surplus >= 0 ? '+' : '') + surplus.toFixed(1) + '%';
+    document.getElementById('surplus-sub').textContent = surplus >= 0 ? 'budget to spare' : 'burned ahead of pace';
+    const st = surplus >= 0 ? 'success' : surplus > -5 ? 'warning' : 'danger';
+    document.getElementById('card-surplus').className = 'card t-' + st;
+    document.getElementById('surplus').className = 'metric-val c-' + st;
+  } else {
+    document.getElementById('surplus').textContent = '—';
+    document.getElementById('card-surplus').className = 'card';
+    document.getElementById('surplus').className = 'metric-val';
+  }
+
+  document.getElementById('daily-budget').textContent = remainDays > 0.1 ? ((100 - used) / remainDays).toFixed(1) + '%' : '—';
+  document.getElementById('daily-budget-sub').textContent = remainDays > 0.1 ? 'per remaining day' : 'cycle almost over';
+
+  const tokUsed = TOK * used / 100;
+  const tokLeft = TOK - tokUsed;
+  const burnPerHr = hrs > 0 ? tokUsed / hrs : 0;
+  const burnPerDay = burnPerHr * 24;
+
+  const hrsToLimEl = document.getElementById('hrs-to-limit');
+  const hrsToLimSub = document.getElementById('hrs-to-limit-sub');
+  if (used >= 100) {
+    hrsToLimEl.textContent = '0h';
+    hrsToLimEl.className = 'metric-val c-danger';
+    hrsToLimSub.textContent = 'already at/past limit';
+  } else if (burnPerHr > 0) {
+    const hrsToLim = (100 - used) / (used / hrs);
+    hrsToLimEl.textContent = fmtHrs(hrsToLim);
+    hrsToLimSub.textContent = hrsToLim < remaining ? 'hits limit before reset' : 'beyond reset — fine';
+    hrsToLimEl.className = 'metric-val ' + (hrsToLim < remaining ? 'c-danger' : 'c-success');
+  } else {
+    hrsToLimEl.textContent = '—';
+    hrsToLimEl.className = 'metric-val';
+    hrsToLimSub.textContent = 'at current burn';
+  }
+
+  rollingSet('tok-used', tokUsed.toFixed(1) + 'M');
+  rollingSet('tok-left', tokLeft.toFixed(1) + 'M');
+  document.getElementById('tok-burn-sub').textContent = burnPerHr > 0 ? 'burning ' + burnPerHr.toFixed(2) + ' MTok/hr' : '—';
+
+  // Burn: avg (since reset) and recent (last 2h from history)
+  const sustain = TOK / CYCLE;
+  const cBurn = document.getElementById('card-burn');
+  const avgEl = document.getElementById('burn-avg');
+  const recEl = document.getElementById('burn-recent');
+  const recSub = document.getElementById('burn-recent-sub');
+  if (hrs > 0) {
+    avgEl.textContent = burnPerHr.toFixed(2);
+    avgEl.className = 'bval ' + colorCls(burnPerHr, sustain, sustain * 1.2);
+    const rec = recentBurn(2, TOK);
+    const tintBy = rec !== null ? Math.max(burnPerHr, rec) : burnPerHr;
+    cBurn.className = 'card ' + tint(tintBy, sustain, sustain * 1.2);
+    if (rec !== null) {
+      recEl.textContent = rec.toFixed(2);
+      recEl.className = 'bval ' + colorCls(rec, sustain, sustain * 1.2);
+      recSub.textContent = 'last 2h';
+    } else {
+      recEl.textContent = '—';
+      recEl.className = 'bval';
+      recSub.textContent = settings.historyEnabled ? 'not enough data' : 'history off';
+    }
+  } else {
+    avgEl.textContent = '—'; avgEl.className = 'bval';
+    recEl.textContent = '—'; recEl.className = 'bval';
+    cBurn.className = 'card';
+    recSub.textContent = 'last 2h';
+  }
+  rollingSet('daily-tok', hrs > 0 ? burnPerDay.toFixed(1) : '—');
+
+  // Resume-in card: show only when projected > 100%.
+  // Wait such that time-elapsed% catches up to used%: wait = (used/100)*CYCLE - hrs.
+  const resumeCard = document.getElementById('resume-card');
+  if (hrs > 0 && proj > 100) {
+    const waitHrs = Math.max(0, (used / 100) * CYCLE - hrs);
+    const shown = Math.min(waitHrs, remaining);
+    if (shown > 0.01) {
+      resumeCard.classList.add('on');
+      document.getElementById('resume-val').textContent = fmtHrs(shown);
+      document.getElementById('resume-sub').textContent = waitHrs > remaining
+        ? 'need longer than the cycle has left — tough week'
+        : 'pause this long to catch linear pace';
+    } else {
+      resumeCard.classList.remove('on');
+    }
+  } else {
+    resumeCard.classList.remove('on');
+  }
+
+  renderDayMarks();
+  const marks = document.querySelectorAll('.day-mark');
+  const activeDayIdx = getDayMarkIdx(hrs);
+  marks.forEach(function(m, i) { m.classList.toggle('active', i === activeDayIdx); });
+
+  const hint = document.getElementById('auto-hint');
+  hint.textContent = fmtClockHint();
+  hint.style.fontWeight = autoMode ? '700' : '400';
+
+  logUsage(used, hrs);
+  renderDayBars();
+  maybeUpdateMeta();
+
+  _lastSnapshot = { TOK: TOK, used: used, hrs: hrs, pctTime: pctTime, proj: proj, surplus: surplus, burnPerHr: burnPerHr };
+}
+
+// ---------- Steppers / wheel ----------
+function stepUsed(delta) {
+  const sl = document.getElementById('used');
+  sl.value = Math.min(100, Math.max(0, +sl.value + delta));
+  saveState(); update();
+}
+document.getElementById('used').addEventListener('wheel', function(e) {
+  e.preventDefault();
+  stepUsed(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+// Track drag state so logUsage ignores intermediate drag positions.
+document.getElementById('used').addEventListener('pointerdown', function() { _usedDragging = true; });
+document.getElementById('used').addEventListener('pointerup', function() {
+  _usedDragging = false;
+  saveState(); update();
+});
+document.getElementById('used').addEventListener('input', function() { saveState(); update(); });
+document.getElementById('hours').addEventListener('input', function() { saveState(); update(); });
+
+// ---------- Copy to clipboard ----------
+function copyStatus() {
+  const s = _lastSnapshot;
+  if (!s.TOK) return;
+  const lines = [
+    'Claude Max ' + planMode + ' — ' + s.used + '% used at ' + s.hrs.toFixed(1) + 'h (' + s.pctTime.toFixed(1) + '% of cycle)',
+    'Projected: ' + s.proj.toFixed(2) + '% | Surplus: ' + (s.surplus >= 0 ? '+' : '') + s.surplus.toFixed(1) + '% | Burn: ' + s.burnPerHr.toFixed(2) + ' MTok/hr',
+    'Resets in ' + fmtHrs(getResetHrs()),
+  ];
+  const text = lines.join('\n');
+  const fb = document.getElementById('copy-fb');
+  const show = function() { fb.classList.add('on'); setTimeout(function() { fb.classList.remove('on'); }, 1200); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(show).catch(function() { fallbackCopy(text); show(); });
+  } else {
+    fallbackCopy(text); show();
+  }
+}
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch(e) {}
+}
+
+// ---------- Keyboard shortcuts ----------
+document.addEventListener('keydown', function(e) {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  const shift = e.shiftKey ? 5 : 1;
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); stepUsed(-shift); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); stepUsed(shift); }
+  else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); toggleAuto(); }
+  else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePlan(); }
+  else if (e.key === 's' || e.key === 'S') { e.preventDefault(); document.getElementById('drawer').classList.contains('on') ? closeSettings() : openSettings(); }
+  else if (e.key === 'c' || e.key === 'C') { e.preventDefault(); copyStatus(); }
+  else if (e.key === 'Escape') { if (document.getElementById('drawer').classList.contains('on')) closeSettings(); }
+});
+
+// Drawer live-apply listeners
+['s-day','s-hour','s-tz','s-t20','s-t5','s-hist'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', onSettingChange);
+  document.getElementById(id).addEventListener('input', onSettingChange);
+});
+
+// ---------- Polling ----------
+// The manual-mode clock. It must not touch the slider while a live feed owns
+// it: elapsed is then derived from the reported reset instant, and this ticker
+// was overwriting that with the configured cycle every 15 seconds. The live
+// poll runs every 30s and put it back, so the page alternated between a correct
+// 56.5h and a 44h-adrift 12.5h twice a minute — whichever you happened to look
+// at was a coin flip. That is the "hit FABLE and the reset time goes haywire and
+// says I have lots of quota when I don't" reading (Jeff 2026-08-06, 2026-08-07).
+setInterval(function() {
+  if (autoMode && !liveMode) {
+    document.getElementById('hours').value = fallbackHours().toFixed(3);
+  }
+  updateExtHint();
+  saveState();
+  update();
+}, 15000);
+
+// ---------- Extension bridge ----------
+// The Chrome extension (extension/) writes scraped usage data into
+// localStorage['cmuc_extension_snap']. If present and fresh, auto-fill the
+// usage % and plan toggle. URL hash and explicit user input still win
+// (loadExtensionSnap runs *before* applyHash on boot).
+function loadExtensionSnap(snap) {
+  try {
+    const raw = snap || JSON.parse(localStorage.getItem('cmuc_extension_snap') || 'null');
+    if (!raw) return false;
+    // Stale check: ignore snapshots older than 2h.
+    if (raw.capturedAt && Date.now() - raw.capturedAt > 2 * 60 * 60 * 1000) return false;
+    const weekly = raw.weeklyAll;
+    if (weekly && typeof weekly.pct === 'number') {
+      document.getElementById('used').value = Math.round(weekly.pct);
+    }
+    if (raw.plan === '20x' || raw.plan === '5x') {
+      planMode = raw.plan;
+      try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
+    }
+    _extSnapAt = raw.capturedAt || Date.now();
+    _snapSrc = 'ext';
+    updateExtHint();
+    return true;
+  } catch(e) { return false; }
+}
+// ---------- Live endpoint (optional) ----------
+// This page has no backend and carries nobody's real numbers. If you run your
+// own service that can report plan usage, put its URL in localStorage under
+// `cmuc_live_url` and the sliders below become automatic. When no URL is set —
+// or the host is unreachable, which is the default for everyone — nothing
+// happens and the manual sliders stay authoritative.
+//
+// Expected JSON: { ok, plan: "20x"|"5x", capturedAt,
+//                  weeklyAll: { pct, resetsAt }, fable?: { pct, resetsAt } }
+const LIVE_KEY = 'cmuc_live_url';
+let liveMode = false;          // true once a fetch has succeeded
+let liveErr = null;            // why the last poll failed, for the status line
+let _snapSrc = null;           // 'live' | 'ext' — what produced _extSnapAt
+let fableMode = false;         // measure against the Fable window instead
+try { fableMode = localStorage.getItem('cmuc_fable') === '1'; } catch(e) {}
+
+// A same-origin `./live.json` is the zero-config default: a host that serves
+// this page next to a live feed goes automatic with no setup, and a host that
+// does not (GitHub Pages) 404s, which pollLive treats as "no feed" and the
+// manual sliders stay authoritative. localStorage still overrides for a feed
+// on another origin.
+const DEFAULT_LIVE_URL = './live.json';
+function liveUrl() {
+  try { return localStorage.getItem(LIVE_KEY) || DEFAULT_LIVE_URL; } catch(e) { return DEFAULT_LIVE_URL; }
+}
+
+// Which window drives the maths. Fable mode swaps in the per-model quota so
+// "am I on pace" answers for Fable specifically (Jeff 2026-08-02).
+//
+// The fable block comes and goes: upstream reports it only when the account it
+// happens to read has a live Fable window, so a poll can arrive without one at
+// any time. Falling through to weeklyAll keeps the reading real — returning
+// nothing used to fail the whole poll, which dropped the page back onto the
+// configured (drifted) cycle and showed a wildly wrong reset with a flattering
+// amount of quota left (Jeff 2026-08-06).
+let fableStale = false;
+function pickWindow(snap) {
+  if (fableMode) {
+    if (snap.fable && typeof snap.fable.pct === 'number') { fableStale = false; return snap.fable; }
+    fableStale = true;
+  }
+  return snap.weeklyAll;
+}
+
+// hours-elapsed is DERIVED now, not dragged: the API hands us the exact reset
+// instant, and the cycle is a known 168h, so elapsed = 168 - hoursUntilReset.
+function hoursElapsedFrom(resetsAt) {
+  const t = Date.parse(resetsAt);
+  if (!isFinite(t)) return null;
+  const untilH = (t - Date.now()) / 3600000;
+  const elapsed = 168 - untilH;
+  return Math.max(0, Math.min(168, elapsed));
+}
+
+// A failed poll used to be entirely silent — the hint stayed hidden and the page
+// just sat on the manual sliders, so "the feed is broken" looked exactly like
+// "there is no feed here." Record why it failed so the status line can say it
+// (Jeff 2026-08-07: "usage sync not working", with no way to see what it was).
+function liveFail(reason) { liveErr = reason; return false; }
+
+// Fetch one candidate feed. Returns the snapshot, or null with `liveErr` set.
+async function fetchSnap(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) { liveFail(url + ' → HTTP ' + res.status); return null; }
+    const snap = await res.json();
+    if (!snap || !snap.ok) { liveFail(url + ' reported not ready'); return null; }
+    return snap;
+  } catch(e) { liveFail(url + ' unreachable'); return null; }
+}
+
+async function pollLive() {
+  const url = liveUrl();
+  if (!url) return liveFail('no feed URL set');
+  let snap = await fetchSnap(url);
+  // A dead hand-set override must not permanently shadow a working same-origin
+  // feed. `cmuc_live_url` is set by hand and nothing in the app ever cleared
+  // it, so one stale value disabled the calculator forever with no way back
+  // from the UI — Jeff's pointed at /squad/api/usage-snapshot, a route that
+  // does not exist, and the page had been manual ever since (2026-08-07).
+  if (!snap && url !== DEFAULT_LIVE_URL) {
+    const fallback = await fetchSnap(DEFAULT_LIVE_URL);
+    if (fallback) {
+      try { localStorage.removeItem(LIVE_KEY); } catch(e) {}
+      snap = fallback;
+    }
+  }
+  if (!snap) return false;
+
+  const win = pickWindow(snap);
+  if (!win || typeof win.pct !== 'number') return liveFail('feed carries no usage number');
+
+  // A real feed means there is nothing left to drive by hand, so it takes over
+  // rather than waiting to be switched on. Set the flag directly instead of
+  // calling toggleAuto, which would re-enter this function through autoRefresh.
+  if (!autoMode) {
+    autoMode = true;
+    try { localStorage.setItem('cmuc_auto', '1'); } catch(e) {}
+    clearInterval(autoTick);
+    autoTick = setInterval(autoRefresh, 30000);
+  }
+  liveMode = true;
+  liveErr = null;
+  liveMisses = 0;
+  _snapSrc = 'live';
+  liveResetsAt = win.resetsAt || null;
+  applyAutoUI();
+  document.getElementById('used').value = Math.round(win.pct);
+  const el = hoursElapsedFrom(win.resetsAt);
+  if (el !== null) document.getElementById('hours').value = el.toFixed(1);
+  if (snap.plan === '20x' || snap.plan === '5x') {
+    planMode = snap.plan;
+    try { localStorage.setItem('cmuc_plan', planMode); } catch(e) {}
+    applyPlanBtn();
+  }
+  liveMode = true;
+  _extSnapAt = snap.capturedAt || Date.now();
+  updateExtHint();
+  saveState();
+  update();
+  return true;
+}
+
+window.addEventListener('cmuc-extension-snap', function(ev) {
+  if (loadExtensionSnap(ev.detail)) {
+    applyPlanBtn();
+    update();
+  }
+});
+
+// ---------- Boot ----------
+loadSettings();
+const storedAuto = loadState();
+loadExtensionSnap();
+// Live poll: one immediately, then every 2 min. The EVEN spacing is what makes
+// the history graph smooth — v0.9 dropped the sparkline because hand-dragged
+// points arrived at random intervals and drew a staircase (Jeff 2026-08-02).
+// One poll at boot so AUTO has data the moment it is switched on.
+pollLive().then(function(){ applyAutoUI(); updateExtHint(); });
+applyAutoUI();
+const hashWantAuto = applyHash();
+populateDrawer();
+applyPlanBtn();
+update();
+// URL `a=1` wins; if no explicit `h=` in hash, fall back to localStorage
+const activateAuto = hashWantAuto || (storedAuto && !window.location.hash.includes('h='));
+if (activateAuto) toggleAuto();
+</script>
+</body>
+</html>
