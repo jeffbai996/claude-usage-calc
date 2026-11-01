@@ -1,212 +1,100 @@
-# Claude Max Usage Calculator
+# claude-usage-calc
 
-**Track your weekly Claude Max token budget in real time — no install, no build step, no account required.**
+![Version](https://img.shields.io/badge/version-v1.1-blue?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+![Dependencies](https://img.shields.io/badge/dependencies-none-blue?style=flat-square)
 
-![Version](https://img.shields.io/badge/version-v1.1-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Zero deps](https://img.shields.io/badge/dependencies-none-lightgrey)
+A one-page calculator for your weekly Claude Max usage. Give it the percentage of your limit you have used and how far into the week you are, and it shows whether you are ahead of or behind a straight-line pace.
 
----
+Try it at [jeffbai996.github.io/claude-usage-calc](https://jeffbai996.github.io/claude-usage-calc/), or open `index.html` in a browser. There is no server, build step or account.
 
-## What it does
+## What it works out
 
-Claude Max plans reset weekly (default: Thursday 12pm PT, configurable in settings). Between resets, you have a finite token budget (~250M tokens/week on Max 20x, ~62.5M on Max 5x — community estimates). The calculator tells you:
-
-- Whether you're ahead or behind linear pace
-- Your projected end-of-week quota consumption at current burn rate
-- How many hours until you'd theoretically hit the limit
-- Your daily token budget for the remaining days
-- Surplus or deficit vs. time elapsed
-- A daily burn chart — one bar per day of the cycle, persisted across reloads
-
-It syncs to your system clock automatically, so the "hours elapsed since reset" stays current without any input from you. AUTO mode is remembered across page reloads.
-
----
-
-## Live demo
-
-**[jeffbai996.github.io/claude-max-usage-calculator](https://jeffbai996.github.io/claude-usage-calc/)**
-
-Or clone and open `index.html` locally — no server needed.
-
----
-
-## Usage
-
-### Step 1 — Find your current usage percentage
-In [claude.ai](https://claude.ai), your usage percentage is shown in the account/settings area or directly in the chat interface. Set the **"usage so far"** slider to that number.
-
-**Tip:** Install the [Chrome extension](#chrome-extension) to have usage auto-synced from claude.ai — no manual entry needed.
-
-### Step 2 — Sync the clock
-Click **AUTO** to lock the hours-elapsed slider to your system clock. It polls every 15 seconds. The clock hint shows the current day/time. AUTO mode is saved to `localStorage` so it restores on next visit.
-
-Or stay in **MAN** mode and drag the **"hours elapsed"** slider manually to model hypothetical scenarios (e.g., "what if I have 40% left at hour 120?").
-
-### Step 3 — Select your plan
-Toggle between **20x** (~250M tokens/week) and **5x** (~62.5M tokens/week) in the token section. Token totals are overridable in settings.
-
-### Step 4 — Read the metrics
+The calculator assumes the plan resets once a week, on Thursday at 12:00 Pacific. You can change that in settings. Between resets there is a fixed token budget. The calculator turns your usage and the hours elapsed into these numbers:
 
 | Metric | What it means |
 |---|---|
-| **quota used** | Linear projection of end-of-week consumption at current burn rate |
-| **surplus / deficit** | How far ahead or behind linear pace you are, in % |
-| **daily budget** | % of your limit you can use per remaining day |
-| **hours left** | At current burn rate, how many hours until you'd exhaust the limit |
-| **burn rate — avg** | MTok/hr since reset |
-| **burn rate — recent** | MTok/hr computed from the last ~2h of tracked history |
-| **daily equivalent** | Your current hourly burn scaled to a 24h day |
-| **resume-in** *(only when projected > 100%)* | How long to pause to get back on linear pace |
+| **quota used** | Where the week ends up if you keep burning at the current rate |
+| **surplus / deficit** | How far ahead of or behind a straight-line pace you are, in % |
+| **daily budget** | The share of your limit you can use on each remaining day |
+| **hours left** | At the current rate, how long until you hit the limit |
+| **burn rate** | Millions of tokens per hour, averaged since the reset and over the last two hours |
+| **daily equivalent** | The current hourly rate scaled to a full day |
+| **resume-in** | How long to pause to get back on pace. Shown only when the projection is over 100% |
 
-### Daily burn chart
+The status bar is green when the projection is 90% or less, yellow from 90 to 100%, and red above 100%.
 
-The **PACE** section includes a bar chart showing how much of your quota you burned on each day of the current cycle. Each bar's height is that day's usage consumption (% of weekly quota); the dashed line marks the daily pace target (1/7th of the week). Green/amber/red coloring matches the rest of the app. Today's bar is dimmed to mark it as in-progress; days not yet reached show empty.
+The weekly token totals are estimates: about 250M on Max 20x and 62.5M on Max 5x. They are community figures, not published ones. You can change them in settings.
 
-History snapshots are written to `localStorage` after you stop dragging the slider, at most one entry per 10 minutes when usage is unchanged. They auto-clear at the start of each new cycle.
+The pace panel also draws one bar per day of the cycle. A bar's height is that day's usage as a share of the weekly quota, and the dashed line marks one seventh of the week. Today's bar is dimmed because the day is not over.
 
-### Settings (gear icon, top right)
+## Using it
 
-- **Reset cycle**: day of week, hour, and timezone — adjust when Anthropic shifts the reset (new model launches sometimes change it).
-- **Plan tokens**: override the 20x / 5x weekly estimates if you've measured your own limit or Anthropic publishes actual numbers.
-- **History**: enable/disable snapshot tracking, clear the log manually.
+1. Read your usage percentage from claude.ai/settings/usage and set the **usage so far** slider to it.
+2. Set **hours elapsed**. **AUTO** ties that slider to your system clock and refreshes it every 15 seconds. It is remembered between visits. **MAN** lets you drag the slider to try a what-if, such as 60% used at hour 120.
+3. Pick the plan, 20x or 5x.
 
-### Keyboard shortcuts
+The gear icon opens settings: the reset day, hour and timezone, the weekly token totals, and whether to keep history. History is a list of usage snapshots in `localStorage`. A new one is saved when the usage figure changes, or when the last one is ten minutes old. The list clears at the start of each cycle and is never synced between devices.
 
-`←` / `→` decrement/increment usage (hold `Shift` for ±5), `A` auto, `P` plan, `S` settings, `C` copy status, `Esc` close drawer.
+Keys: left and right arrows change usage by 1 (hold Shift for 5), `A` toggles AUTO, `P` switches plan, `S` opens settings, `C` copies a status summary and `Esc` closes the drawer.
 
-### URL state sync
+The URL hash mirrors the state, as in `#u=13&p=20x&h=23`. Bookmark it or send it to someone to share a scenario. `a=1` replaces `h` when AUTO is on.
 
-The URL hash (`#u=13&h=23&p=20x`) mirrors current state. Share or bookmark a specific scenario — pasting a URL loads those values. The `a=1` parameter in the hash means AUTO mode.
+## Chrome extension
 
-### Reading the status bar
+The extension in `extension/` reads your usage from claude.ai/settings/usage and passes it to the calculator, so you do not type it in. A hint beside the AUTO switch says when the last reading arrived. The calculator ignores a reading older than two hours.
 
-| Color | Meaning |
-|---|---|
-| Green | Projected consumption ≤ 90% — comfortably under pace |
-| Yellow | Projected 90–100% — close to the wire, watch usage |
-| Red | Projected >100% — over pace, likely to get throttled |
+To install it:
 
----
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode**.
+3. Click **Load unpacked** and pick the `extension/` folder.
+4. Open claude.ai/settings/usage once.
 
-## Chrome Extension
+After that the extension checks every 30 minutes. If its last reading is stale, it opens the usage page in a background tab and closes the tab after 8 seconds.
 
-The `extension/` directory contains a Chrome extension that scrapes your usage percentage directly from claude.ai and writes it into `localStorage` so the calculator auto-fills it. When active, a small **"via extension · synced Xm ago"** hint appears below the usage slider.
+It passes readings only to calculator pages on github.io, such as the demo above. A local copy of `index.html` does not receive them. If you host your own copy, name the repository `claude-usage-calc`.
 
-### Install (developer mode)
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** and select the `extension/` folder
-4. Visit [claude.ai](https://claude.ai) — usage syncs automatically
+The script that reads claude.ai runs only on the usage page, and the extension's code makes no network requests. It reads the session, weekly all-models, Sonnet-only and Claude Design percentages and your plan. The calculator uses the weekly all-models figure and the plan. If Anthropic relabels sections on that page, the parser breaks, and the fix is in `parse.js` and the copy inlined in `content_scrape.js`.
 
-The extension only reads the usage percentage shown on claude.ai. It does not make any network requests and cannot see your conversations.
+## Live feed
 
----
-
-## Live feed (optional)
-
-Serve a `live.json` next to `index.html` and the calculator goes fully automatic: the usage percentage, the plan, and the reset instant all come from the feed, so every manual control is hidden and the reset cycle no longer needs configuring. Without one — the default for GitHub Pages — the fetch 404s and the manual sliders stay authoritative.
+If a `live.json` sits next to `index.html`, the calculator reads usage, plan and reset time from it and runs itself. The sliders stay on screen but are locked, and elapsed time comes from the reset time in the feed instead of the settings. Without a feed, which is the case on GitHub Pages, the request 404s and the sliders stay in charge.
 
 ```json
 {
   "ok": true,
   "plan": "20x",
-  "capturedAt": 1786019258210,
-  "weeklyAll": { "pct": 26.0, "resetsAt": "2026-08-11T22:59:59Z" },
-  "fable":     { "pct": 28.0, "resetsAt": "2026-08-11T23:00:00Z" }
+  "capturedAt": 1786384800000,
+  "weeklyAll": { "pct": 40.0, "resetsAt": "2026-08-13T19:00:00Z" },
+  "fable":     { "pct": 35.0, "resetsAt": "2026-08-13T19:00:00Z" }
 }
 ```
 
-`weeklyAll` is required; `fable` is optional and enables the FABLE toggle, which measures against the per-model window instead. Set `localStorage.cmuc_live_url` to point at a feed on another origin. If the feed stops responding, the page falls back to clock-driven time sync rather than freezing on the last reading.
+`ok` must be true and `weeklyAll` must carry a `pct`. `fable` is optional. When it is present, the FABLE switch measures against that window instead. To read a feed from another origin, set `localStorage.cmuc_live_url` to its address. If the feed misses two polls in a row, the page goes back to the system clock for elapsed time instead of freezing on the last reading.
 
----
+## How it is built
 
-## Deploying to GitHub Pages
+Everything is in `index.html`: the markup, the styles and the script, with no framework or bundler. The only outside request is for two fonts from Google Fonts. The extension is a separate Manifest V3 folder. To host the page, publish `index.html` on GitHub Pages or any static host.
 
-1. Fork or clone this repo
-2. Push `index.html` to your repo root (or `/docs` folder)
-3. Go to **Settings → Pages → Deploy from branch**
-4. Select your branch and folder, click Save
-5. Your URL will be `https://<username>.github.io/<repo-name>/`
+One file means it can sit on any static host or open from disk. Colours are CSS variables, and dark mode follows the operating system with no script involved. Every `localStorage` call is wrapped, so a browser that blocks storage, such as a private window, still runs the page. It just forgets things. A feed that misses one poll still counts as up, because a single blip should not throw away a good reading. It takes two misses in a row.
 
-No Jekyll, no config files, no build pipeline — GitHub Pages serves static HTML directly.
-
----
-
-## Architecture
-
-Single file. No dependencies. No build.
+### The maths
 
 ```
-index.html
-├── <style>       CSS custom properties, dark mode via prefers-color-scheme
-├── <body>        Slider controls, metric cards, history chart, token section
-└── <script>      All logic — vanilla JS, no bundler
-
-extension/
-├── manifest.json
-├── content.js    Scrapes usage % from claude.ai
-└── background.js Bridges content → calculator via localStorage
+linear pace      = hours elapsed / 168 x 100
+projected use    = usage / hours elapsed x 168
+surplus          = linear pace - usage
+hours to limit   = (100 - usage) / (usage / hours elapsed)
+burn rate        = plan tokens x usage / 100 / hours elapsed      (MTok per hour)
 ```
 
-### Key design decisions
-
-**Why a single file?**
-Zero-friction deployment. Drop it anywhere — local filesystem, CDN, Gist, email attachment. No dependency on npm, bundlers, or a server.
-
-**Why vanilla JS with `requestAnimationFrame` for animations?**
-The rolling number animations (`rollingSet()`) use a cubic-out easing curve over 350ms. `animateSlider()` uses the same curve at 900ms for the slider thumb. Both are cancellable so rapid updates don't stack.
-
-**Why two separate polling intervals?**
-The global 15s `setInterval` snaps the slider value and refreshes all metrics. The `autoTick` 30s interval inside `toggleAuto()` uses `animateSlider()` for smooth animated drift — better UX than a sudden jump. Separating them means the silent poll doesn't fight the animation.
-
-**Why `localStorage` with silent try/catch?**
-If `localStorage` is unavailable (private browsing, certain iframe contexts), the app degrades gracefully — no error, no data loss, just no persistence.
-
-**Why `_usedDragging` to gate history logging?**
-Logging on every `input` event during a slider drag would write dozens of entries at the same timestamp, creating vertical artifacts in the history chart. The `pointerdown`/`pointerup` guard skips logging while the thumb is being dragged and commits the final value on release.
-
-**Why CSS custom properties for everything?**
-All colors are defined in `:root` and overridden in `@media (prefers-color-scheme: dark)`. No JavaScript theme switching — the OS handles it.
-
----
-
-## The math
-
-**Linear pace**: at hour `H` of a 168h cycle you "should" have used `H/168 × 100%` of your budget.
-
-**Projected quota**: `(usage% / hoursElapsed) × 168` — end-of-week consumption if burn rate is constant.
-
-**Surplus/deficit**: `timePct − usagePct` — positive = under pace, negative = burning faster than linear.
-
-**Hours to limit**: `(100 − used%) / (used% / hoursElapsed)` — hours at current burn until 100%.
-
-**Burn rate**: `(planTokens × usage% / 100) / hoursElapsed` — MTok/hr.
-
----
-
-## Caveats
-
-- **Token totals are not official.** ~250M/week for Max 20x and ~62.5M for Max 5x are reverse-engineered community estimates. Anthropic does not publish these figures. Override in settings if you have better numbers.
-- **Reset time can drift.** Anthropic has shifted the weekly reset hour on model launches. Default is Thu 12pm PT; adjust in settings if it changes.
-- **Usage % must be read manually** unless you use the Chrome extension. There is no public API to read claude.ai usage programmatically.
-- **Projections assume constant burn rate.** The calculator is a snapshot, not a forecast. The "recent" burn rate (last 2h from history) is closer to real-time.
-- **History is local-only.** Usage snapshots live in `localStorage`. No server sync, no cross-device history.
-
----
+All of these assume the burn rate stays constant, so read them as a snapshot and not a forecast. The recent burn rate, from the last two hours of history, is closer to now.
 
 ## Contributing
 
-Bug reports and PRs welcome. Given the zero-dependency, single-file design, contributions should stay in that spirit:
-
-- Bug fixes and accuracy improvements: always welcome
-- New metrics or UI improvements: welcome, keep the file size reasonable
-- External dependencies (npm packages, CDN frameworks): not in scope for `index.html`
-
-Please open an issue before large changes to discuss scope.
-
----
+Bug reports and pull requests are welcome. Please keep it a single file with no dependencies, and open an issue before anything large.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
