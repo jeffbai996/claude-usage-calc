@@ -81,7 +81,7 @@
   .controls-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: .85rem 1.1rem; margin-bottom: 10px; }
   .auto-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
   /* The controls in this row are fixed-size pills; letting flex shrink them
-     clipped "AUTO" to "AUT" on every phone width (Jeff 2026-08-14 — the seg
+     clipped "AUTO" to "AUT" on every phone width (the seg
      wanted 101px and was being handed 66). They wrap to a second line instead
      of getting squeezed. */
   .auto-row > div { flex-wrap: wrap; row-gap: 6px; }
@@ -296,7 +296,7 @@ body.live-mode #live-plan { display: inline-block; }
   font-weight: 700; letter-spacing: .04em; }
 
 /* FABLE sits next to the MAN/AUTO switch, so they share a height and the
-   switch is the one that should carry the weight (Jeff 2026-08-06). */
+   switch is the one that should carry the weight. */
 .seg { min-height: 22px; }
 .seg-btn { font-size: 0.6rem; padding: 4px 11px; }
 #fable-btn { font-size: 0.46rem; padding: 2px 5px; min-height: 22px; }
@@ -346,7 +346,7 @@ body.live-mode #live-plan { display: inline-block; }
       <span id="live-plan">—</span>
       <!-- Measures against the per-model Fable quota instead of the all-model
            weekly one. Only meaningful with a live feed, so it disables itself
-           without one (Jeff 2026-08-02). -->
+           without one. -->
       <button class="toggle-btn" id="fable-btn" onclick="toggleFable()" disabled>FABLE</button>
       <span class="auto-lbl" id="auto-hint"></span>
       <span id="ext-snap-hint" class="ext-snap-hint" style="display:none"></span>
@@ -970,8 +970,7 @@ function togglePlan() {
   saveState();
   update();
 }
-// AUTO drives BOTH sliders (Jeff 2026-08-02: "toggle both auto-time and
-// auto-percentage at the same time"). With a live endpoint configured it is the
+// AUTO drives BOTH sliders, auto-time and auto-percentage together. With a live endpoint configured it is the
 // source of truth for the percentage AND the elapsed time — the reset instant
 // comes back with the reading, so hours are derived rather than guessed. With
 // no endpoint (every public visitor) it degrades to the original clock-only
@@ -996,14 +995,13 @@ function applyAutoUI() {
 }
 
 // Try the endpoint first; a feed that is missing or has gone away falls back to
-// the clock rather than freezing on the last reading (Jeff 2026-08-06: a dead
-// feed used to stall time sync entirely instead of degrading).
+// the clock rather than freezing on the last reading (a dead feed used to
+// stall time sync entirely instead of degrading).
 //
 // One miss is not an outage. Dropping out of live mode on a single failed poll
 // made the FABLE button — which is gated on liveMode — grey itself out on any
 // blip, and since a backgrounded tab has its 30s timer throttled to about a
-// minute, it then stayed grey long enough to look permanent (Jeff 2026-08-07:
-// "the fable button no longer works"). Two consecutive misses is a real outage.
+// minute, it then stayed grey long enough to look permanent. Two consecutive misses is a real outage.
 let liveMisses = 0;
 function autoRefresh() {
   return pollLive().then(function(ok) {
@@ -1012,7 +1010,7 @@ function autoRefresh() {
     // Below the outage threshold, leave the last live reading alone. Falling
     // through here on a single blip overwrote a correct 56.5h with the
     // configured cycle's 12.5h while the page still said "live · synced" — the
-    // 44h jump that shows up as "618% quota used, 14h left" (Jeff 2026-08-06).
+    // 44h jump that shows up as "618% quota used, 14h left".
     if (liveMisses < 2 && liveMode) return;
     if (liveMode) { liveMode = false; applyAutoUI(); }
     updateExtHint();                                     // say why, rather than going quiet
@@ -1154,7 +1152,7 @@ function updateExtHint() {
   const el = document.getElementById('ext-snap-hint');
   if (!el) return;
   // Name the broken feed. Without this the page looks identical whether the
-  // endpoint 404s, the host is off the tailnet, or there was never a feed.
+  // endpoint 404s, the host is unreachable, or there was never a feed.
   if (!liveMode && liveErr) {
     el.textContent = 'no live feed · ' + liveErr;
     el.style.display = '';
@@ -1399,8 +1397,8 @@ document.addEventListener('keydown', function(e) {
 // was overwriting that with the configured cycle every 15 seconds. The live
 // poll runs every 30s and put it back, so the page alternated between a correct
 // 56.5h and a 44h-adrift 12.5h twice a minute — whichever you happened to look
-// at was a coin flip. That is the "hit FABLE and the reset time goes haywire and
-// says I have lots of quota when I don't" reading (Jeff 2026-08-06, 2026-08-07).
+// at was a coin flip, which showed a haywire reset time and far more quota than
+// was really left.
 setInterval(function() {
   if (autoMode && !liveMode) {
     document.getElementById('hours').value = fallbackHours().toFixed(3);
@@ -1462,14 +1460,14 @@ function liveUrl() {
 }
 
 // Which window drives the maths. Fable mode swaps in the per-model quota so
-// "am I on pace" answers for Fable specifically (Jeff 2026-08-02).
+// "am I on pace" answers for Fable specifically.
 //
 // The fable block comes and goes: upstream reports it only when the account it
 // happens to read has a live Fable window, so a poll can arrive without one at
 // any time. Falling through to weeklyAll keeps the reading real — returning
 // nothing used to fail the whole poll, which dropped the page back onto the
 // configured (drifted) cycle and showed a wildly wrong reset with a flattering
-// amount of quota left (Jeff 2026-08-06).
+// amount of quota left.
 let fableStale = false;
 function pickWindow(snap) {
   if (fableMode) {
@@ -1491,8 +1489,7 @@ function hoursElapsedFrom(resetsAt) {
 
 // A failed poll used to be entirely silent — the hint stayed hidden and the page
 // just sat on the manual sliders, so "the feed is broken" looked exactly like
-// "there is no feed here." Record why it failed so the status line can say it
-// (Jeff 2026-08-07: "usage sync not working", with no way to see what it was).
+// "there is no feed here." Record why it failed so the status line can say it.
 function liveFail(reason) { liveErr = reason; return false; }
 
 // Fetch one candidate feed. Returns the snapshot, or null with `liveErr` set.
@@ -1513,8 +1510,8 @@ async function pollLive() {
   // A dead hand-set override must not permanently shadow a working same-origin
   // feed. `cmuc_live_url` is set by hand and nothing in the app ever cleared
   // it, so one stale value disabled the calculator forever with no way back
-  // from the UI — Jeff's pointed at /squad/api/usage-snapshot, a route that
-  // does not exist, and the page had been manual ever since (2026-08-07).
+  // from the UI: a URL pointing at a route that no longer existed left the
+  // page in manual mode with no explanation.
   if (!snap && url !== DEFAULT_LIVE_URL) {
     const fallback = await fetchSnap(DEFAULT_LIVE_URL);
     if (fallback) {
@@ -1571,7 +1568,7 @@ const storedAuto = loadState();
 loadExtensionSnap();
 // Live poll: one immediately, then every 2 min. The EVEN spacing is what makes
 // the history graph smooth — v0.9 dropped the sparkline because hand-dragged
-// points arrived at random intervals and drew a staircase (Jeff 2026-08-02).
+// points arrived at random intervals and drew a staircase.
 // One poll at boot so AUTO has data the moment it is switched on.
 pollLive().then(function(){ applyAutoUI(); updateExtHint(); });
 applyAutoUI();
